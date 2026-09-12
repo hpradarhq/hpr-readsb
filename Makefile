@@ -140,7 +140,7 @@ ifeq ($(RTLSDR), yes)
     endif
 
 	# static linking not well supported, use at own risk
-	ifeq ($(STATIC), yes)
+    ifeq ($(STATIC), yes)
 		LIBS_SDR += -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0
     else
         LIBS_SDR += -lrtlsdr -lusb-1.0
