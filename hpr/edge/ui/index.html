@@ -9,12 +9,36 @@
     body{font:13px/1.4 Inter,"Segoe UI",system-ui,-apple-system,sans-serif;color:#a8bcd9}
     #atlas{display:block;width:100%;height:100%;margin:0;border:0;opacity:0;visibility:hidden;transition:opacity .12s linear}
     #atlas.ready{opacity:1;visibility:visible}
-    #edgeStatus{position:fixed;z-index:10;inset:0;display:grid;place-items:center;background:#02070d;color:#7d93b3;font-size:12px;letter-spacing:.04em}
+    #edgeStatus{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;background:#02070d;padding:24px}
     #edgeStatus.hidden{display:none}
+    .diag{width:min(760px,calc(100vw - 48px));border:1px solid #24354d;border-radius:10px;background:#07111f;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+    .diag h1{margin:0 0 12px;color:#d8e7fb;font-size:16px;font-weight:650}
+    .diag-grid{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0}
+    .diag dt{color:#6f88aa}.diag dd{margin:0;color:#b8c9df;overflow-wrap:anywhere}
+    #diagError{margin-top:12px;padding:10px 12px;border-radius:6px;background:#170c12;color:#ff9aac;white-space:pre-wrap;overflow-wrap:anywhere;display:none}
+    #diagError.visible{display:block}
+    #diagHint{margin-top:12px;color:#7188a7;font-size:12px}
+    #edgeBanner{position:fixed;z-index:1100;left:12px;right:12px;bottom:12px;display:none;padding:8px 10px;border:1px solid #743448;border-radius:7px;background:rgba(34,10,19,.94);color:#ffadba;box-shadow:0 4px 18px rgba(0,0,0,.3);font:12px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+    #edgeBanner.visible{display:block}
   </style>
 </head>
 <body>
-  <div id="edgeStatus">Waiting for live readsb / AirWire backend…</div>
+  <div id="edgeStatus">
+    <section class="diag" role="status" aria-live="polite">
+      <h1>HPRadar Atlas Edge — startup diagnostics</h1>
+      <dl class="diag-grid">
+        <dt>Stage</dt><dd id="diagStage">starting</dd>
+        <dt>Backend</dt><dd id="diagEndpoint">/api/air/v1</dd>
+        <dt>Attempt</dt><dd id="diagAttempt">0</dd>
+        <dt>HTTP</dt><dd id="diagHttp">not checked</dd>
+        <dt>Payload</dt><dd id="diagPayload">not checked</dd>
+        <dt>Last check</dt><dd id="diagTime">—</dd>
+      </dl>
+      <div id="diagError"></div>
+      <div id="diagHint">Atlas will start only after a valid live AirWire v1 snapshot is available. No demo/fake aircraft are used.</div>
+    </section>
+  </div>
+  <div id="edgeBanner" role="alert"></div>
   <div id="mount"></div>
   <script>
     (()=>{
@@ -23,62 +47,135 @@
       const scripts=['airwire-adapter.js','aircraft-renderer.js','station-context.js','atlas-edge-hardening.js','atlas-edge-live-bridge.js'];
       const mount=document.getElementById('mount');
       const status=document.getElementById('edgeStatus');
-      let booting=false;
+      const banner=document.getElementById('edgeBanner');
+      const fields={stage:document.getElementById('diagStage'),attempt:document.getElementById('diagAttempt'),http:document.getElementById('diagHttp'),payload:document.getElementById('diagPayload'),time:document.getElementById('diagTime'),error:document.getElementById('diagError')};
+      let booting=false,attempt=0,lastError='';
+
+      function nowText(){return new Date().toLocaleTimeString()}
+      function showError(stage,message,{http='—',payload='—'}={}){
+        lastError=String(message||'unknown error');
+        fields.stage.textContent=stage;
+        fields.http.textContent=http;
+        fields.payload.textContent=payload;
+        fields.time.textContent=nowText();
+        fields.error.textContent=lastError;
+        fields.error.classList.add('visible');
+        console.error(`[Atlas Edge] ${stage}: ${lastError}`);
+      }
+      function clearError(){fields.error.textContent='';fields.error.classList.remove('visible')}
+      function showBanner(message){banner.textContent=message;banner.classList.add('visible')}
+      function hideBanner(){banner.textContent='';banner.classList.remove('visible')}
 
       async function backendReady(){
+        attempt+=1;
+        fields.stage.textContent='checking live backend';
+        fields.attempt.textContent=String(attempt);
+        fields.time.textContent=nowText();
         try{
           const response=await fetch(ENDPOINT,{cache:'no-store'});
-          if(!response.ok)return false;
-          const payload=await response.json();
-          return Array.isArray(payload)&&payload[0]===1&&Array.isArray(payload[3]);
-        }catch(_){return false}
+          fields.http.textContent=`${response.status} ${response.statusText||''}`.trim();
+          const raw=await response.text();
+          if(!response.ok){
+            showError('backend unavailable',`GET ${ENDPOINT} returned HTTP ${response.status}${raw?`\n${raw.slice(0,320)}`:''}`,{http:fields.http.textContent,payload:'not parsed'});
+            return false;
+          }
+          let payload;
+          try{payload=JSON.parse(raw)}catch(error){
+            showError('backend payload invalid',`GET ${ENDPOINT} returned invalid JSON: ${error.message}\n${raw.slice(0,320)}`,{http:fields.http.textContent,payload:'invalid JSON'});
+            return false;
+          }
+          const valid=Array.isArray(payload)&&payload[0]===1&&Array.isArray(payload[3]);
+          fields.payload.textContent=valid?`AirWire v1 · ${payload[3].length} aircraft`:`unexpected shape: ${JSON.stringify(payload).slice(0,240)}`;
+          if(!valid){
+            showError('backend contract mismatch','Expected AirWire envelope [1, generatedAt, totalMessages, aircraft[]].',{http:fields.http.textContent,payload:fields.payload.textContent});
+            return false;
+          }
+          clearError();
+          fields.stage.textContent='live backend ready';
+          return true;
+        }catch(error){
+          showError('backend request failed',`${error.name||'Error'}: ${error.message||error}`,{http:'network/fetch error',payload:'not received'});
+          return false;
+        }
       }
 
       const inject=(doc,src)=>new Promise((resolve,reject)=>{
         const script=doc.createElement('script');
         script.src=src;
-        script.onload=resolve;
-        script.onerror=()=>reject(new Error(`failed to load ${src}`));
+        const timer=setTimeout(()=>reject(new Error(`timeout loading ${src}`)),8000);
+        script.onload=()=>{clearTimeout(timer);resolve()};
+        script.onerror=()=>{clearTimeout(timer);reject(new Error(`failed to load ${src}`))};
         doc.body.appendChild(script);
       });
 
       async function createAtlas(){
         if(booting)return;
         booting=true;
+        fields.stage.textContent='loading canonical Atlas shell';
         const frame=document.createElement('iframe');
         frame.id='atlas';
         frame.title='HPRadar Atlas Edge';
         frame.allow='fullscreen';
         frame.referrerPolicy='same-origin';
+        const shellTimer=setTimeout(()=>showError('Atlas shell timeout','atlas-v4.7-shell.html did not finish loading within 12 seconds.',{http:fields.http.textContent,payload:fields.payload.textContent}),12000);
         frame.addEventListener('load',async()=>{
+          clearTimeout(shellTimer);
           const doc=frame.contentDocument;
+          const win=frame.contentWindow;
+          if(!doc||!win){showError('Atlas shell inaccessible','Same-origin iframe document is unavailable.');return}
+          win.addEventListener('error',event=>{
+            const msg=`${event.message||'iframe error'}${event.filename?` @ ${event.filename}:${event.lineno||0}:${event.colno||0}`:''}`;
+            showError('Atlas runtime error',msg,{http:fields.http.textContent,payload:fields.payload.textContent});
+            showBanner(`Atlas runtime error: ${msg}`);
+          });
+          win.addEventListener('unhandledrejection',event=>{
+            const reason=event.reason?.stack||event.reason?.message||String(event.reason||'unhandled rejection');
+            showError('Atlas promise rejection',reason,{http:fields.http.textContent,payload:fields.payload.textContent});
+            showBanner(`Atlas promise rejection: ${reason}`);
+          });
           try{
-            for(const src of scripts)await inject(doc,src);
+            fields.stage.textContent='injecting live BE adapters';
+            for(const src of scripts){fields.stage.textContent=`loading ${src}`;await inject(doc,src)}
+            fields.stage.textContent='waiting for first live snapshot';
           }catch(error){
-            console.error('Atlas Edge live bridge bootstrap failed',error);
-            status.textContent='Live backend connected; Atlas bridge failed to start.';
+            showError('Atlas bridge bootstrap failed',error.stack||error.message||String(error),{http:fields.http.textContent,payload:fields.payload.textContent});
           }
         },{once:true});
+        frame.addEventListener('error',()=>showError('Atlas shell failed','Browser failed to load atlas-v4.7-shell.html.',{http:fields.http.textContent,payload:fields.payload.textContent}),{once:true});
         mount.appendChild(frame);
         frame.src='atlas-v4.7-shell.html';
       }
 
       async function waitForBackend(){
         if(await backendReady()){
-          status.textContent='Live backend connected. Loading Atlas…';
+          fields.stage.textContent='backend connected; loading Atlas';
           await createAtlas();
           return;
         }
-        setTimeout(waitForBackend,500);
+        setTimeout(waitForBackend,1000);
       }
 
       window.addEventListener('message',event=>{
-        if(event.origin!==location.origin||event.data?.type!=='hpr-edge-live-ready')return;
-        const frame=document.getElementById('atlas');
-        if(frame)frame.classList.add('ready');
-        status.classList.add('hidden');
+        if(event.origin!==location.origin||!event.data)return;
+        if(event.data.type==='hpr-edge-live-ready'){
+          const frame=document.getElementById('atlas');
+          if(frame)frame.classList.add('ready');
+          status.classList.add('hidden');
+          hideBanner();
+          console.info(`[Atlas Edge] live: ${event.data.aircraft??'?'} aircraft`);
+          return;
+        }
+        if(event.data.type==='hpr-edge-live-error'){
+          const stage=event.data.stage||'live bridge';
+          const message=event.data.message||'unknown live bridge error';
+          showError(stage,message,{http:event.data.http||fields.http.textContent,payload:event.data.payload||fields.payload.textContent});
+          if(status.classList.contains('hidden'))showBanner(`${stage}: ${message}`);
+        }
+        if(event.data.type==='hpr-edge-live-recovered')hideBanner();
       });
 
+      window.addEventListener('error',event=>showError('host runtime error',event.message||'unknown host error'));
+      window.addEventListener('unhandledrejection',event=>showError('host promise rejection',event.reason?.stack||event.reason?.message||String(event.reason||'unknown rejection')));
       waitForBackend();
     })();
   </script>
