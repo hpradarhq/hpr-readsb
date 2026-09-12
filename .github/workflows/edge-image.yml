@@ -96,3 +96,39 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Runtime backend-failure diagnostics smoke
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/feat/edge-atlas-v4.7-production-parity'
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${IMAGE_NAME}:edge-v47-parity"
+          docker pull --platform linux/arm64 "$image"
+          cid=$(docker run -d --platform linux/arm64 -e ADSB_SDR_SERIAL=__hpr_ci_missing_sdr__ -p 18080:80 "$image")
+          cleanup() { docker rm -f "$cid" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+
+          ok=0
+          for _ in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18080/ > /tmp/edge-index.html; then ok=1; break; fi
+            sleep 1
+          done
+          test "$ok" -eq 1
+          grep -q 'startup diagnostics' /tmp/edge-index.html
+          test "$(docker inspect --format '{{.State.Running}}' "$cid")" = true
+
+          status=$(curl -fsS http://127.0.0.1:18080/api/readsb/backend-status.json || true)
+          pid=$(printf '%s' "$status" | sed -n 's/.*"pid":\([0-9][0-9]*\).*/\1/p')
+          if [ -n "$pid" ] && printf '%s' "$status" | grep -q '"state":"running"'; then
+            docker exec "$cid" sh -c "kill $pid" || true
+          fi
+
+          backend_error=0
+          for _ in $(seq 1 20); do
+            body=$(curl -fsS http://127.0.0.1:18080/api/air/v1 2>/dev/null || true)
+            if printf '%s' "$body" | grep -q '"error":"readsb exited"'; then backend_error=1; break; fi
+            sleep 1
+          done
+          test "$backend_error" -eq 1
+          test "$(docker inspect --format '{{.State.Running}}' "$cid")" = true
+          curl -fsS http://127.0.0.1:18080/ | grep -q 'startup diagnostics'
