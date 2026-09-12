@@ -46,6 +46,11 @@ jobs:
           node test/station-context.test.mjs
           node test/edge-g6-capacity.test.mjs
           node test/edge-live-backend-contract.test.mjs
+          sh -n hpr/edge/entrypoint.sh
+          grep -q 'backend-status.json' hpr/edge/entrypoint.sh
+          grep -q "nginx -g 'daemon off;'" hpr/edge/entrypoint.sh
+          grep -q 'startup diagnostics' hpr/edge/ui/index.html
+          grep -q 'hpr-edge-live-error' hpr/edge/ui/index.html
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
