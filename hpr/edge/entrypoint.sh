@@ -20,9 +20,6 @@ cat > /run/readsb/station.json <<EOF
 {"name":"${FEEDER_NAME:-}","lat":${LAT:-null},"lon":${LON:-null},"alt_m":${FEEDER_ALT_M:-null},"alt_ft":${FEEDER_ALT_FT:-null},"multifeeder_uuid":"${MULTIFEEDER_UUID:-}","adsbx_uuid":"${ADSBX_UUID:-}","heywhatsthat_id":"${FEEDER_HEYWHATSTHAT_ID:-}","heywhatsthat_alts":"${FEEDER_HEYWHATSTHAT_ALTS:-}"}
 EOF
 
-# nginx only serves Atlas Edge UI and readsb-generated JSON.
-nginx
-
 set -- /usr/local/bin/readsb \
   --device-type rtlsdr \
   --gain="${READSB_GAIN:-auto}" \
@@ -58,5 +55,58 @@ if [ -n "${HPR_UPSTREAM_HOST:-}" ]; then
   set -- "$@" "--net-connector=${HPR_UPSTREAM_HOST},${HPR_UPSTREAM_PORT:-30004},beast_reduce_plus_out"
 fi
 
+STATUS=/run/readsb/backend-status.json
+LOG=/run/readsb/backend.log
+: > "$LOG"
+printf '{"state":"starting","pid":null,"exit_code":null}\n' > "$STATUS"
+
 printf '%s\n' "HPR Edge starting: station=${FEEDER_NAME:-hpr-edge} serial=${ADSB_SDR_SERIAL:-auto} Atlas=:80 BeastReduce=:30004 Beast=:30005"
-exec "$@"
+printf '%s\n' "HPR Edge diagnostics remain available on :80 even if readsb fails."
+
+# Keep nginx alive independently so startup/backend failures remain visible in the browser.
+nginx -g 'daemon off;' &
+NGINX_PID=$!
+
+# Mirror readsb output to container logs while retaining it for browser diagnostics.
+tail -n 0 -F "$LOG" >&2 &
+TAIL_PID=$!
+
+"$@" >>"$LOG" 2>&1 &
+READSB_PID=$!
+printf '{"state":"running","pid":%s,"exit_code":null}\n' "$READSB_PID" > "$STATUS"
+
+shutdown() {
+  trap - TERM INT
+  kill "$READSB_PID" 2>/dev/null || true
+  kill "$TAIL_PID" 2>/dev/null || true
+  kill "$NGINX_PID" 2>/dev/null || true
+  wait "$READSB_PID" 2>/dev/null || true
+  wait "$TAIL_PID" 2>/dev/null || true
+  wait "$NGINX_PID" 2>/dev/null || true
+  exit 0
+}
+trap shutdown TERM INT
+
+READSB_REPORTED=0
+while kill -0 "$NGINX_PID" 2>/dev/null; do
+  if [ "$READSB_REPORTED" -eq 0 ] && ! kill -0 "$READSB_PID" 2>/dev/null; then
+    set +e
+    wait "$READSB_PID"
+    READSB_EXIT=$?
+    set -e
+    printf '{"state":"exited","pid":%s,"exit_code":%s}\n' "$READSB_PID" "$READSB_EXIT" > "$STATUS"
+    printf '%s\n' "HPR Edge: readsb exited with code $READSB_EXIT; nginx diagnostics remain online." >&2
+    READSB_REPORTED=1
+  fi
+  sleep 1
+done
+
+set +e
+wait "$NGINX_PID"
+NGINX_EXIT=$?
+set -e
+kill "$READSB_PID" 2>/dev/null || true
+kill "$TAIL_PID" 2>/dev/null || true
+wait "$READSB_PID" 2>/dev/null || true
+wait "$TAIL_PID" 2>/dev/null || true
+exit "$NGINX_EXIT"
