@@ -45,6 +45,7 @@ jobs:
           node test/airwire-adapter.test.mjs
           node test/station-context.test.mjs
           node test/edge-g6-capacity.test.mjs
+          node test/edge-live-backend-contract.test.mjs
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -76,7 +77,7 @@ jobs:
             type=sha,prefix=edge-
           labels: |
             org.opencontainers.image.title=HPRadar readsb Edge
-            org.opencontainers.image.description=HPR readsb + AirWire + canonical Atlas V4.7 Edge UI
+            org.opencontainers.image.description=HPR readsb + live AirWire + canonical Atlas V4.7 Edge UI
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push
