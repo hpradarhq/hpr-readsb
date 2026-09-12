@@ -156,11 +156,11 @@ endif
 ifeq ($(HACKRF), yes)
     SDR_OBJ += sdr_hackrf.o
     CFLAGS += $(shell pkg-config --cflags libhackrf) -DENABLE_HACKRF
-    LIBS_SDR += $(shell pkg-config --libs libhackrf)
+    LIBS_SDR += $(shell pkg-config --libs libhackRF)
 endif
 
 ifeq ($(PLUTOSDR), yes)
-    SDR_OBJ += sdr_plutosdr.o sdr_uplutosdr.o
+    SDR_OBJ += sdr_plutosdr.o
     CFLAGS += $(shell pkg-config --cflags libiio libad9361) -DENABLE_PLUTOSDR
     LIBS_SDR += $(shell pkg-config --libs libiio libad9361)
 endif
