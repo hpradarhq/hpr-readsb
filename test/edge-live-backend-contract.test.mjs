@@ -6,6 +6,7 @@ const read = path => fs.readFileSync(path, 'utf8');
 const makefile = read('Makefile');
 const airwireC = read('hpr/airwire/hpr_airwire.c');
 const nginx = read('hpr/edge/nginx.conf');
+const entrypoint = read('hpr/edge/entrypoint.sh');
 const index = read('hpr/edge/ui/index.html');
 const bridge = read('hpr/edge/ui/atlas-edge-live-bridge.js');
 const dockerfile = read('docker/edge.Dockerfile');
@@ -32,7 +33,9 @@ assert.match(bridge, /DATA\.splice\(0,DATA\.length/,
   'runtime must replace canonical demo entities with backend entities');
 assert.match(bridge, /hpr-edge-live-ready/,
   'Atlas must only become visible after the first decoded live snapshot');
-assert.match(dockerfile, /test -s \/run\/readsb\/airwire\.json/,
-  'container health must depend on live AirWire output');
+assert.match(entrypoint, /printf '\{\"error\":\"readsb exited\",\"exit_code\":%s\}\\n'[^\n]*> \/run\/readsb\/airwire\.json/,
+  'readsb exit must invalidate stale AirWire with an explicit backend error');
+assert.match(dockerfile, /grep -q '\^\\\[1,' \/run\/readsb\/airwire\.json/,
+  'container health must require an AirWire v1 envelope, not merely a non-empty file');
 
-console.log('EDGE LIVE BACKEND PASS: readsb -> AirWire -> /api/air/v1 -> Atlas; no demo-first startup.');
+console.log('EDGE LIVE BACKEND PASS: readsb -> AirWire -> /api/air/v1 -> Atlas; backend exit invalidates stale data and diagnostics remain available.');
