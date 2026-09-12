@@ -2,6 +2,7 @@
 set -eu
 
 mkdir -p /run/readsb
+rm -f /run/readsb/airwire.json
 
 # Existing HPR feeder env vocabulary is canonical on edge nodes.
 TZ_VALUE="${FEEDER_TZ:-${EEDER_TZ:-Asia/Ho_Chi_Minh}}"
@@ -95,7 +96,8 @@ while kill -0 "$NGINX_PID" 2>/dev/null; do
     READSB_EXIT=$?
     set -e
     printf '{"state":"exited","pid":%s,"exit_code":%s}\n' "$READSB_PID" "$READSB_EXIT" > "$STATUS"
-    printf '%s\n' "HPR Edge: readsb exited with code $READSB_EXIT; nginx diagnostics remain online." >&2
+    printf '{"error":"readsb exited","exit_code":%s}\n' "$READSB_EXIT" > /run/readsb/airwire.json
+    printf '%s\n' "HPR Edge: readsb exited with code $READSB_EXIT; AirWire invalidated; nginx diagnostics remain online." >&2
     READSB_REPORTED=1
   fi
   sleep 1
