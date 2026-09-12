@@ -29,7 +29,8 @@ includesAll('canonical map controls',shell,['new maplibregl.NavigationControl','
 includesAll('canonical adaptive composition',shell,['function compositionMode()','function syncAdaptiveChrome()','@media (min-width:768px) and (max-width:1279px)','@media (max-width:767px)','id="tabletDock"','id="mobileContextBar"','id="mobilePeekBar"']);
 assert(!/fetch\s*\(|XMLHttpRequest|WebSocket\s*\(/.test(scripts),'canonical V4.7 shell must remain contract-free');
 
-includesAll('production entry',entry,['src="atlas-v4.7-shell.html"',"'airwire-adapter.js'","'aircraft-renderer.js'","'station-context.js'","'atlas-edge-hardening.js'","'atlas-edge-live-bridge.js'",'frame.contentDocument']);
+includesAll('production entry',entry,["const ENDPOINT='/api/air/v1'","frame.src='atlas-v4.7-shell.html'","payload[0]===1&&Array.isArray(payload[3])","'airwire-adapter.js'","'aircraft-renderer.js'","'station-context.js'","'atlas-edge-hardening.js'","'atlas-edge-live-bridge.js'",'frame.contentDocument','hpr-edge-live-ready']);
+assert(!entry.includes('src="atlas-v4.7-shell.html"'),'canonical shell must not auto-start before live backend readiness');
 assert(!entry.includes('--surface:'),'entry must not reimplement Atlas visual tokens');
 assert(!entry.includes('maplibregl'),'entry must not create a parallel map implementation');
 
@@ -39,7 +40,8 @@ includesAll('live contracts',bridge,["air:'/api/air/v1'","receiver:'/api/readsb/
 includesAll('Atlas model bridge',bridge,['function atlasAircraft','function atlasStation','DATA.splice(0,DATA.length','ALL_ENTITIES.splice(0,ALL_ENTITIES.length','state.kind=\'aircraft\'','renderHeaderContext();renderList();renderDetail();updateOperationalSources();syncAdaptiveChrome()']);
 includesAll('renderer bridge',bridge,['AircraftRenderer.markup','AircraftRenderer.iconKey','AircraftRenderer.mapImages','loadImage(item.url)']);
 includesAll('mock shutdown',bridge,['clearInterval(simulationTimer)','startSimulation=()=>{}','TRACK_HISTORY.clear()']);
+includesAll('live reveal',bridge,['function signalReady(snapshot)','hpr-edge-live-ready','signalReady(snapshot)']);
 assert(!/\bROW\s*\[|\bENVELOPE\s*\[|\bFLAGS\s*\[/.test(bridge),'AirWire positional indexes leaked into production bridge');
 assert(!/WebSocket\s*\(/.test(bridge),'Edge bridge must use the frozen HTTP AirWire contract');
 
-console.log('G2 PASS: production renders canonical Atlas V4.7, strips demo context, and layers live AirWire/readsb data through isolated adapters.');
+console.log('G2 PASS: canonical Atlas boots only after live AirWire and renders readsb-backed entities through isolated adapters.');
