@@ -30,6 +30,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       nginx \
+      tzdata \
       librtlsdr0 \
       libusb-1.0-0 \
       zlib1g \

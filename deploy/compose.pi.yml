@@ -2,8 +2,16 @@ services:
   hpr-edge:
     image: ghcr.io/hpradarhq/hpr-readsb-edge:edge
     container_name: hpr-edge
+    hostname: "${FEEDER_NAME:-hpr-edge}"
     restart: unless-stopped
     pull_policy: always
+
+    env_file:
+      - .env
+
+    environment:
+      READSB_GAIN: "${READSB_GAIN:-auto}"
+      READSB_JSON_INTERVAL: "${READSB_JSON_INTERVAL:-1}"
 
     ports:
       - "8080:80"      # Atlas Edge UI + /api/air/v1
@@ -11,13 +19,6 @@ services:
       - "30003:30003"  # SBS
       - "30004:30004"  # BeastReduce
       - "30005:30005"  # Beast
-
-    environment:
-      READSB_GAIN: "${READSB_GAIN:-auto}"
-      READSB_JSON_INTERVAL: "${READSB_JSON_INTERVAL:-1}"
-      RECEIVER_LAT: "${RECEIVER_LAT:-}"
-      RECEIVER_LON: "${RECEIVER_LON:-}"
-      HPR_FEEDER_UUID: "${HPR_FEEDER_UUID:-}"
 
     volumes:
       - /dev/bus/usb:/dev/bus/usb
