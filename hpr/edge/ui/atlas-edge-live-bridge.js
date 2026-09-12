@@ -6,8 +6,7 @@ const StationContext=window.HPRStationContext;
 if(!AirWire||!AircraftRenderer||!StationContext)throw new Error('Atlas Edge bridge dependencies missing');
 
 const CONTRACT=Object.freeze({air:'/api/air/v1',receiver:'/api/readsb/receiver.json',stats:'/data/stats.json',station:'/api/readsb/station.json',version:'/version.json'});
-const LIVE_KINDS=new Set(['aircraft','vessel','aton','station','source']);
-let lastGood=0,lastCount=null,lastCountTs=0,msgRate=0,polling=false,contextTimer=0,airTimer=0;
+let lastGood=0,lastCount=null,lastCountTs=0,msgRate=0,polling=false,contextTimer=0,airTimer=0,readySent=false;
 let stationModel=null;
 
 const finite=v=>v!=null&&Number.isFinite(Number(v))?Number(v):null;
@@ -96,13 +95,18 @@ function setConnected(ok){
   const dot=document.querySelector('.top-fixed .status-dot');if(dot){dot.style.background=ok?'var(--live)':'var(--danger)';dot.style.boxShadow=ok?'0 0 7px color-mix(in srgb,var(--live) 60%,transparent)':'none'}
   document.body.dataset.edgeConnection=ok?'live':'offline';
 }
+function signalReady(snapshot){
+  if(readySent)return;
+  readySent=true;
+  window.parent.postMessage({type:'hpr-edge-live-ready',aircraft:snapshot.aircraft.length,generationTime:snapshot.generationTime},location.origin);
+}
 async function tick(){
   if(polling)return;polling=true;
   try{
     const r=await fetch(CONTRACT.air,{cache:'no-store'});if(!r.ok)throw new Error(`AirWire ${r.status}`);
     const snapshot=AirWire.adaptEnvelope(await r.json()),now=Date.now();
     if(lastCount!=null&&snapshot.totalMessages>=lastCount)msgRate=(snapshot.totalMessages-lastCount)/Math.max((now-lastCountTs)/1000,.001);
-    lastCount=snapshot.totalMessages;lastCountTs=now;lastGood=now;replaceAircraft(snapshot);replaceStation();setConnected(true);ensureRotorImages();
+    lastCount=snapshot.totalMessages;lastCountTs=now;lastGood=now;replaceAircraft(snapshot);replaceStation();setConnected(true);ensureRotorImages();signalReady(snapshot);
   }catch(error){if(Date.now()-lastGood>3500)setConnected(false);console.warn('Atlas Edge AirWire poll',error)}finally{polling=false}
 }
 async function loadVersion(){
