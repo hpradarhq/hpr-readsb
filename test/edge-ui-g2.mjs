@@ -18,8 +18,8 @@ function includesAll(label,source,needles){const missing=needles.filter(needle=>
 assert.equal(crypto.createHash('sha256').update(Buffer.from(fixture)).digest('hex'),'360dc1b014ef2da81789ec8b9b72958abfc874270ae514044544160451ef3f80','V4.7 visual fixture changed');
 assert.equal(shell,fixture,'production shell must be byte-identical to canonical Atlas V4.7');
 
-const scripts=[...shell.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match=>match[1]).filter(Boolean).join('\n');
-new Function(scripts);
+const shellScripts=[...shell.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match=>match[1]).filter(Boolean).join('\n');
+new Function(shellScripts);
 new Function(hardening);
 new Function(bridge);
 
@@ -27,10 +27,11 @@ includesAll('canonical search',shell,['function searchScore','function search()'
 includesAll('canonical collection/detail',shell,['function openCollection','function closeCollection','function selectEntity','function renderList','function renderDetail','[data-related]','id="collectionPanel"','id="detailCard"']);
 includesAll('canonical map controls',shell,['new maplibregl.NavigationControl','new maplibregl.GlobeControl','new maplibregl.FullscreenControl','function applyLayerVisibility','function cameraInsets','function settleMapLayout']);
 includesAll('canonical adaptive composition',shell,['function compositionMode()','function syncAdaptiveChrome()','@media (min-width:768px) and (max-width:1279px)','@media (max-width:767px)','id="tabletDock"','id="mobileContextBar"','id="mobilePeekBar"']);
-assert(!/fetch\s*\(|XMLHttpRequest|WebSocket\s*\(/.test(scripts),'canonical V4.7 shell must remain contract-free');
+assert(!/fetch\s*\(|XMLHttpRequest|WebSocket\s*\(/.test(shellScripts),'canonical V4.7 shell must remain contract-free');
 
-includesAll('production entry',entry,["const ENDPOINT='/api/air/v1'","frame.src='atlas-v4.7-shell.html'","payload[0]===1&&Array.isArray(payload[3])","'airwire-adapter.js'","'aircraft-renderer.js'","'station-context.js'","'atlas-edge-hardening.js'","'atlas-edge-live-bridge.js'",'frame.contentDocument','hpr-edge-live-ready']);
+includesAll('production entry',entry,["const ENDPOINT='/api/air/v1'","const SHELL='/atlas-v4.7-shell.html'",'frame.src=shellUrl','payload[0]===1&&Array.isArray(payload[3])','/airwire-adapter.js','/aircraft-renderer.js','/station-context.js','/atlas-edge-hardening.js','/atlas-edge-live-bridge.js','frame.contentDocument','hpr-edge-live-ready','async function preflightScript','if(href!==shellUrl)']);
 assert(!entry.includes('src="atlas-v4.7-shell.html"'),'canonical shell must not auto-start before live backend readiness');
+assert(entry.indexOf('frame.src=shellUrl')<entry.indexOf('mount.appendChild(frame)'),'iframe src must be assigned before DOM insertion to avoid about:blank load races');
 assert(!entry.includes('--surface:'),'entry must not reimplement Atlas visual tokens');
 assert(!entry.includes('maplibregl'),'entry must not create a parallel map implementation');
 
@@ -44,4 +45,4 @@ includesAll('live reveal',bridge,['function signalReady(snapshot)','hpr-edge-liv
 assert(!/\bROW\s*\[|\bENVELOPE\s*\[|\bFLAGS\s*\[/.test(bridge),'AirWire positional indexes leaked into production bridge');
 assert(!/WebSocket\s*\(/.test(bridge),'Edge bridge must use the frozen HTTP AirWire contract');
 
-console.log('G2 PASS: canonical Atlas boots only after live AirWire and renders readsb-backed entities through isolated adapters.');
+console.log('G2 PASS: canonical Atlas boots only after live AirWire; iframe bootstrap is race-safe and bridge assets are preflighted.');
