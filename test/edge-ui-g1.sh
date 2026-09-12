@@ -24,8 +24,13 @@ cmp -s "$fixture" "$shell" || {
   exit 1
 }
 
-grep -q 'src="atlas-v4.7-shell.html"' "$entry" || {
-  echo "G1 FAIL: production entry does not render the canonical shell" >&2
+grep -q "frame.src='atlas-v4.7-shell.html'" "$entry" || {
+  echo "G1 FAIL: backend-gated entry does not load the canonical shell" >&2
+  exit 1
+}
+
+grep -q "const ENDPOINT='/api/air/v1'" "$entry" || {
+  echo "G1 FAIL: production entry is not gated by live AirWire" >&2
   exit 1
 }
 
@@ -34,4 +39,4 @@ grep -q "atlas-edge-live-bridge.js" "$entry" || {
   exit 1
 }
 
-echo "G1 PASS: production Atlas shell is byte-identical to canonical V4.7; live integration is isolated outside the visual baseline."
+echo "G1 PASS: canonical V4.7 is byte-identical and only boots after live AirWire is available."
