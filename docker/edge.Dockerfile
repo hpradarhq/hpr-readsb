@@ -11,6 +11,7 @@ ARG ATLAS_DONOR_SHA
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
+      nodejs \
       pkg-config \
       wget \
       librtlsdr-dev \
@@ -22,7 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY . .
 
-RUN make clean \
+RUN node --check hpr/edge/ui/app.js \
+    && node --check hpr/edge/ui/iconMap.js \
+    && make clean \
     && make -j"$(nproc)" readsb RTLSDR=yes DISABLE_INTERACTIVE=yes OPTIMIZE="-O2" \
     && strip readsb \
     && mkdir -p /out/ui/mapstyles \
@@ -71,7 +74,8 @@ RUN sed -i \
       -e "s|FE 4.7.2 · 260912.2|FE v${FE_VERSION} · ${FE_BUILD}|" \
       /usr/share/nginx/html/index.html \
     && printf '{"fe":"%s","build":"%s","atlas_donor":"%s"}\n' "$FE_VERSION" "$FE_BUILD" "$ATLAS_DONOR_SHA" > /usr/share/nginx/html/version.json \
-    && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
+    && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge \
+    && nginx -t
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
