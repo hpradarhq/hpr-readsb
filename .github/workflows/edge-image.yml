@@ -76,7 +76,6 @@ jobs:
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=edge-g6,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-g3-g6' }}
-            type=raw,value=edge-v47-parity,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-production-parity' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-
@@ -102,7 +101,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          image="${IMAGE_NAME}:edge-v47-parity"
+          short_sha="${GITHUB_SHA::7}"
+          image="${IMAGE_NAME}:edge-${short_sha}"
           docker pull --platform linux/arm64 "$image"
           cid=$(docker run -d --platform linux/arm64 -e ADSB_SDR_SERIAL=__hpr_ci_missing_sdr__ -p 18080:80 "$image")
           cleanup() { docker rm -f "$cid" >/dev/null 2>&1 || true; }
@@ -143,3 +143,13 @@ jobs:
           test "$backend_error" -eq 1
           test "$(docker inspect --format '{{.State.Running}}' "$cid")" = true
           curl -fsS http://127.0.0.1:18080/ | grep -q 'startup diagnostics'
+
+      - name: Promote tested parity tag
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/feat/edge-atlas-v4.7-production-parity'
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA::7}"
+          docker buildx imagetools create \
+            --tag "${IMAGE_NAME}:edge-v47-parity" \
+            "${IMAGE_NAME}:edge-${short_sha}"
