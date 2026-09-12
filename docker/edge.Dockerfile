@@ -1,9 +1,12 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.7.1
-ARG FE_BUILD=260912.1
+ARG FE_VERSION=4.7.2
+ARG FE_BUILD=260912.2
+ARG ATLAS_DONOR_SHA=5b2903dcc00be656daaa517c06e135c88f01b5fa
 
 FROM debian:bookworm-slim AS builder
+
+ARG ATLAS_DONOR_SHA
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
@@ -22,16 +25,28 @@ COPY . .
 RUN make clean \
     && make -j"$(nproc)" readsb RTLSDR=yes DISABLE_INTERACTIVE=yes OPTIMIZE="-O2" \
     && strip readsb \
-    && mkdir -p /out \
+    && mkdir -p /out/ui/mapstyles \
     && cp readsb /out/readsb \
     && wget --timeout=20 --tries=4 --retry-connrefused \
        -O /out/aircraft.csv.gz \
-       https://raw.githubusercontent.com/wiedehopf/tar1090-db/csv/aircraft.csv.gz
+       https://raw.githubusercontent.com/wiedehopf/tar1090-db/csv/aircraft.csv.gz \
+    && for f in sprite.png sprite.json sprite@2x.png sprite@2x.json; do \
+         wget --timeout=20 --tries=4 --retry-connrefused \
+           -O "/out/ui/$f" \
+           "https://raw.githubusercontent.com/hpradarhq/hpr-atlas/${ATLAS_DONOR_SHA}/fe-v/$f"; \
+       done \
+    && for f in dark-minimal.json light-minimal.json; do \
+         wget --timeout=20 --tries=4 --retry-connrefused \
+           -O "/out/ui/mapstyles/$f" \
+           "https://raw.githubusercontent.com/hpradarhq/hpr-atlas/${ATLAS_DONOR_SHA}/fe-v/mapstyles/$f"; \
+       done \
+    && sed -i 's#https://api.maptiler.com/fonts/{fontstack}/{range}.pbf?key=nRYox0R1ZyZ6XqSStq4S#https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf#g' /out/ui/mapstyles/*.json
 
 FROM debian:bookworm-slim
 
 ARG FE_VERSION
 ARG FE_BUILD
+ARG ATLAS_DONOR_SHA
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
@@ -50,17 +65,18 @@ COPY --from=builder /out/aircraft.csv.gz /usr/local/share/hpr-readsb/aircraft.cs
 COPY hpr/edge/nginx.conf /etc/nginx/nginx.conf
 COPY hpr/edge/entrypoint.sh /usr/local/bin/hpr-edge
 COPY hpr/edge/ui/ /usr/share/nginx/html/
+COPY --from=builder /out/ui/ /usr/share/nginx/html/
 
 RUN sed -i \
-      -e "s|<title>HPRadar Atlas Edge</title>|<title>HPRadar Atlas Edge · FE v${FE_VERSION}</title>|" \
-      -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
+      -e "s|FE 4.7.2 · 260912.2|FE v${FE_VERSION} · ${FE_BUILD}|" \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","atlas_donor":"%s"}\n' "$FE_VERSION" "$FE_BUILD" "$ATLAS_DONOR_SHA" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
-      hpradar.fe.build="${FE_BUILD}"
+      hpradar.fe.build="${FE_BUILD}" \
+      hpradar.atlas.donor="${ATLAS_DONOR_SHA}"
 
 ENV READSB_JSON_INTERVAL=1 \
     READSB_GAIN=auto \
