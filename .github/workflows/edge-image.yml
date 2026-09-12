@@ -3,14 +3,13 @@ name: HPR Edge image
 on:
   push:
     branches:
-      - edge-appliance-v1
+      - dev
     tags:
       - "edge-v*"
     paths-ignore:
       - "**/*.md"
   pull_request:
     branches:
-      - hpr-airwire-v1
       - dev
     paths-ignore:
       - "**/*.md"
@@ -54,7 +53,7 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/edge-appliance-v1' }}
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-
