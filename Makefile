@@ -1,5 +1,5 @@
 PROGNAME=readsb
-READSB_VERSION := "$(shell printf '%s' `cat version`; { git show -s --format=format: && printf '%s' ' wiedehopf git: ' && git describe --tags --abbrev --dirty --always && git show -s --format=format:\"(committed: %cd)\" | tr -cd '[a-z],[A-Z],[0-9],:, ,\-,_,(,)';} || printf '%s' ' compiled on '`date +%y%m%d` )"
+READSB_VERSION := "$(shell printf '%s' `cat version`; { git show -s --format=format: && printf '%s' ' wiedehopf git: ' && git describe --tags --abbrev --dirty --always && git show -s --format=format:"(committed: %cd)" | tr -cd '[a-z],[A-Z],[0-9],:, ,\-,_,(,)';} || printf '%s' ' compiled on '`date +%y%m%d` )"
 
 RTLSDR ?= no
 BLADERF ?= no
@@ -156,7 +156,7 @@ endif
 ifeq ($(HACKRF), yes)
     SDR_OBJ += sdr_hackrf.o
     CFLAGS += $(shell pkg-config --cflags libhackrf) -DENABLE_HACKRF
-    LIBS_SDR += $(shell pkg-config --libs libhackRF)
+    LIBS_SDR += $(shell pkg-config --libs libhackrf)
 endif
 
 ifeq ($(PLUTOSDR), yes)
