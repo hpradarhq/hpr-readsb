@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - dev
+      - feat/edge-atlas-v4.7-g3-g6
+      - feat/edge-atlas-v4.7-production-parity
     tags:
       - "edge-v*"
     paths-ignore:
@@ -31,7 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Atlas Edge FE gates G1-G5
+      - name: Atlas Edge FE gates G1-G6 readiness
         run: |
           bash test/edge-ui-g1.sh
           node test/edge-ui-g2.mjs
@@ -63,12 +65,14 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=edge-g6,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-g3-g6' }}
+            type=raw,value=edge-v47-parity,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-production-parity' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-
           labels: |
             org.opencontainers.image.title=HPRadar readsb Edge
-            org.opencontainers.image.description=HPR readsb + AirWire + Atlas Edge UI
+            org.opencontainers.image.description=HPR readsb + AirWire + canonical Atlas V4.7 Edge UI
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push
