@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ARG FE_VERSION=4.7.4-edge.3
-ARG FE_BUILD=260912.5
+ARG FE_BUILD=260912.6
 
 FROM debian:bookworm-slim AS builder
 
@@ -68,6 +68,6 @@ ENV READSB_JSON_INTERVAL=1 \
 EXPOSE 80 30002 30003 30004 30005
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD test -s /run/readsb/airwire.json || exit 1
+  CMD grep -q '^\[1,' /run/readsb/airwire.json || exit 1
 
 ENTRYPOINT ["/usr/local/bin/hpr-edge"]
