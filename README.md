@@ -1,124 +1,87 @@
-# HPR readsb
+# HPRadar Edge ADS-B Receiver
 
-HPRadar's thin fork of [`wiedehopf/readsb`](https://github.com/wiedehopf/readsb) for ADS-B edge receivers.
+Lean HPRadar edge appliance based on [`wiedehopf/readsb`](https://github.com/wiedehopf/readsb).
 
-The rule for this fork is simple: **keep the upstream RF / Mode-S / ADS-B engine intact and add only the HPR-specific boundary needed by HPRadar.**
-
-This branch adds **HPR AirWire v1**, a compact positional JSON contract emitted directly from readsb aircraft state for HPR Atlas frontends.
-
-> Status: experimental HPR integration branch. The upstream-compatible `dev` branch remains untouched.
+```text
+RTL-SDR -> HPR readsb -> AirWire v1 -> Atlas Edge UI
+                    \
+                     -> BeastReduce+UUID -> HPR central
+```
 
 ## Layout
 
 ```text
-root *.c / *.h       upstream readsb territory
-hpr/airwire/         HPR AirWire implementation + contract
-hpr/                 HPR fork notes/baseline
+root *.c / *.h       upstream readsb territory — keep intact
+hpr/airwire/         HPR AirWire C + protocol contract
+hpr/edge/            Atlas Edge UI + nginx + entrypoint
+docker/              edge image definition
+deploy/              compose + env + newbie guide
+.github/workflows/    CI/CD
 ```
 
-Do not reorganize upstream source files; keeping their paths intact keeps rebases small.
+The flat upstream root is intentional. HPR code stays namespaced so upstream rebases remain small.
 
-## Architecture
+## Image
 
 ```text
-SDR / I-Q
-   |
-   v
-wiedehopf/readsb core
-   |- RF demodulation
-   |- Mode-S / ADS-B decode
-   |- CPR / tracking
-   |- local aircraft state
-   |
-   +--> BeastReduce+UUID --> HPR central ingest
-   |
-   +--> HPR AirWire v1 --> Atlas UI
+ghcr.io/hpradarhq/hpr-readsb-edge:edge
 ```
 
-HPR does **not** replace or fork the DSP, Mode-S, CPR, tracking, or Beast receiver logic.
+Platforms:
 
-## Why AirWire
+- `linux/arm64` — Raspberry Pi 3/4/5 with 64-bit OS
+- `linux/arm/v7` — Orange Pi Plus 2E / ARMv7
 
-Classic readsb web clients normally consume keyed JSON or binCraft and then build their own browser-side model.
+## Quick edge test
 
-HPR AirWire removes that extra mapping layer:
+```bash
+git clone https://github.com/hpradarhq/hpr-readsb.git
+cd hpr-readsb/deploy
+cp .env.example .env
+nano .env
+
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+Generate one stable feeder UUID:
+
+```bash
+cat /proc/sys/kernel/random/uuid
+```
+
+Put it in `.env` as `HPR_FEEDER_UUID`, then open:
 
 ```text
-readsb aircraft state
-        |
-        v
-HPR AirWire positional JSON
-        |
-        v
-Atlas UI store / render
+http://EDGE_NODE_IP:8080
 ```
 
-The browser does not translate `aircraft.json` into another aircraft object model.
+Verify:
+
+```bash
+curl -s http://localhost:8080/api/air/v1
+docker compose logs -f hpr-edge
+```
+
+Detailed setup and troubleshooting: [`deploy/README.md`](deploy/README.md).
 
 ## AirWire v1
 
-Snapshot envelope:
+AirWire is serialized directly from readsb aircraft state. Atlas Edge reads it directly; there is no legacy `aircraft.json -> HPR model` conversion in the browser.
 
-```json
-[1,1789181234567,82736492,[["8880e3",0,16,"HVN123",20.98765,106.12345,35000,35625,468.2,87.4,-640,null,"1234",163,0,0.2,0.1,-13.5,"VN-A123","A321",0,12548]]]
-```
+Contract: [`hpr/airwire/AIRWIRE-V1.md`](hpr/airwire/AIRWIRE-V1.md).
 
-The aircraft row has 22 frozen positional fields. Missing values are `null`; future compatible fields are append-only.
+## CI/CD
 
-See [`hpr/airwire/AIRWIRE-V1.md`](hpr/airwire/AIRWIRE-V1.md) for the protocol contract.
+`.github/workflows/edge-image.yml` builds [`docker/edge.Dockerfile`](docker/edge.Dockerfile) and publishes one GHCR multi-arch manifest for `arm64` and `arm/v7`.
 
-## Build
+No tar1090 frontend, protobuf, Node/npm runtime, or Atlas Go backend is required on the edge node.
 
-```bash
-git clone -b hpr-airwire-v1 https://github.com/hpradarhq/hpr-readsb.git
-cd hpr-readsb
-make -j"$(nproc)" RTLSDR=yes DISABLE_INTERACTIVE=yes
-```
+## Upstream policy
 
-Run with local snapshots:
-
-```bash
-mkdir -p /run/readsb
-./readsb --device-type rtlsdr --gain auto --net --write-json=/run/readsb --write-json-every=1
-```
-
-AirWire output:
-
-```text
-/run/readsb/airwire.json
-```
-
-## Optional HPR central feed
-
-```bash
-./readsb \
-  ... \
-  --uuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
-  --net-connector=atlas.example.net,30004,beast_reduce_plus_out
-```
-
-Receiver identity and Beast transport remain readsb-native; HPR AirWire is the local BE-to-FE contract.
-
-## Branch model
-
-```text
-dev                     upstream-compatible mirror
- `-- hpr-airwire-v1      HPR protocol/core
-      `-- edge-appliance-v1  deployable edge product
-```
-
-## KISS / LEAN rules
-
-This branch intentionally does not introduce protobuf, a second backend process, a new HTTP server in C, browser-side readsb mapping, decoder changes, or tar1090 UI code.
-
-The production edge appliance lives on branch [`edge-appliance-v1`](https://github.com/hpradarhq/hpr-readsb/tree/edge-appliance-v1).
-
-## Upstream
-
-HPR readsb is based on [`wiedehopf/readsb`](https://github.com/wiedehopf/readsb), lineage `dump1090 -> dump1090-fa -> Mictronics/readsb -> wiedehopf/readsb`.
-
-For decoder options, SDR support, traces, APIs, and legacy formats, use upstream documentation.
+HPR keeps the readsb RF / Mode-S / ADS-B / CPR / tracking core upstream-compatible. HPR-specific code belongs under `hpr/`; do not reorganize the upstream flat C/H source tree.
 
 ## License
 
-This fork retains the upstream license and copyright notices. See [`LICENSE`](LICENSE).
+This fork retains upstream copyright and license requirements. See [`LICENSE`](LICENSE).

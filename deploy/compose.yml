@@ -1,0 +1,31 @@
+services:
+  hpr-edge:
+    image: ghcr.io/hpradarhq/hpr-readsb-edge:edge
+    container_name: hpr-edge
+    restart: unless-stopped
+
+    ports:
+      - "8080:80"
+      - "30002:30002"
+      - "30003:30003"
+      - "30004:30004"
+      - "30005:30005"
+
+    environment:
+      HPR_FEEDER_UUID: "${HPR_FEEDER_UUID:-}"
+      HPR_UPSTREAM_HOST: "${HPR_UPSTREAM_HOST:-}"
+      HPR_UPSTREAM_PORT: "${HPR_UPSTREAM_PORT:-30004}"
+      RECEIVER_LAT: "${RECEIVER_LAT:-}"
+      RECEIVER_LON: "${RECEIVER_LON:-}"
+      READSB_GAIN: "${READSB_GAIN:-auto}"
+      READSB_MAX_RANGE_NM: "${READSB_MAX_RANGE_NM:-}"
+      READSB_JSON_INTERVAL: "${READSB_JSON_INTERVAL:-1}"
+
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+
+    device_cgroup_rules:
+      - "c 189:* rwm"
+
+    tmpfs:
+      - /run/readsb:size=32m,mode=0755
