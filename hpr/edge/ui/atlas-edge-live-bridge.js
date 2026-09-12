@@ -6,7 +6,7 @@ const StationContext=window.HPRStationContext;
 if(!AirWire||!AircraftRenderer||!StationContext)throw new Error('Atlas Edge bridge dependencies missing');
 
 const CONTRACT=Object.freeze({air:'/api/air/v1',receiver:'/api/readsb/receiver.json',stats:'/data/stats.json',station:'/api/readsb/station.json',version:'/version.json'});
-let lastGood=0,lastCount=null,lastCountTs=0,msgRate=0,polling=false,contextTimer=0,airTimer=0,readySent=false;
+let lastGood=0,lastCount=null,lastCountTs=0,msgRate=0,polling=false,contextTimer=0,airTimer=0,readySent=false,lastReportedError=0;
 let stationModel=null;
 
 const finite=v=>v!=null&&Number.isFinite(Number(v))?Number(v):null;
@@ -15,6 +15,12 @@ const ageText=sec=>{const n=finite(sec);if(n==null)return '—';if(n<60)return `
 const deg=v=>finite(v)==null?'—':`${String(Math.round((Number(v)+360)%360)).padStart(3,'0')}°`;
 const signed=v=>{const n=finite(v);if(n==null)return '—';if(n===0)return '0';return `${n>0?'+':'−'}${Math.abs(Math.round(n)).toLocaleString('en-US')}`};
 const quality=a=>a.freshness==='live'?95:a.freshness==='aging'?74:48;
+
+function reportError(stage,error,extra={}){
+  const message=error?.stack||error?.message||String(error||'unknown error');
+  window.parent.postMessage({type:'hpr-edge-live-error',stage,message,...extra},location.origin);
+}
+function reportRecovered(){window.parent.postMessage({type:'hpr-edge-live-recovered'},location.origin)}
 
 function atlasAircraft(a){
   return{
@@ -86,10 +92,15 @@ function bindMapBridge(){
   map.on('style.load',()=>setTimeout(ensureRotorImages,0));ensureRotorImages();
 }
 
-async function jsonOrEmpty(url){try{const r=await fetch(url,{cache:'no-store'});return r.ok?await r.json():{}}catch(_){return{}}}
+async function jsonOrEmpty(url){
+  try{const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`${url} HTTP ${r.status}`);return await r.json()}
+  catch(error){console.warn('Atlas Edge context fetch',error);return{}}
+}
 async function refreshContext(){
-  const [receiver,stats,station]=await Promise.all([jsonOrEmpty(CONTRACT.receiver),jsonOrEmpty(CONTRACT.stats),jsonOrEmpty(CONTRACT.station)]);
-  stationModel=StationContext.adapt(receiver,stats,station);replaceStation();
+  try{
+    const [receiver,stats,station]=await Promise.all([jsonOrEmpty(CONTRACT.receiver),jsonOrEmpty(CONTRACT.stats),jsonOrEmpty(CONTRACT.station)]);
+    stationModel=StationContext.adapt(receiver,stats,station);replaceStation();
+  }catch(error){reportError('station/readsb context',error)}
 }
 function setConnected(ok){
   const dot=document.querySelector('.top-fixed .status-dot');if(dot){dot.style.background=ok?'var(--live)':'var(--danger)';dot.style.boxShadow=ok?'0 0 7px color-mix(in srgb,var(--live) 60%,transparent)':'none'}
@@ -103,11 +114,19 @@ function signalReady(snapshot){
 async function tick(){
   if(polling)return;polling=true;
   try{
-    const r=await fetch(CONTRACT.air,{cache:'no-store'});if(!r.ok)throw new Error(`AirWire ${r.status}`);
-    const snapshot=AirWire.adaptEnvelope(await r.json()),now=Date.now();
+    const r=await fetch(CONTRACT.air,{cache:'no-store'});
+    if(!r.ok){const body=await r.text();throw new Error(`GET ${CONTRACT.air} HTTP ${r.status}${body?`: ${body.slice(0,240)}`:''}`)}
+    const raw=await r.text();let payload;
+    try{payload=JSON.parse(raw)}catch(error){throw new Error(`AirWire invalid JSON: ${error.message}; body=${raw.slice(0,240)}`)}
+    const snapshot=AirWire.adaptEnvelope(payload),now=Date.now();
     if(lastCount!=null&&snapshot.totalMessages>=lastCount)msgRate=(snapshot.totalMessages-lastCount)/Math.max((now-lastCountTs)/1000,.001);
     lastCount=snapshot.totalMessages;lastCountTs=now;lastGood=now;replaceAircraft(snapshot);replaceStation();setConnected(true);ensureRotorImages();signalReady(snapshot);
-  }catch(error){if(Date.now()-lastGood>3500)setConnected(false);console.warn('Atlas Edge AirWire poll',error)}finally{polling=false}
+    if(lastReportedError){lastReportedError=0;reportRecovered()}
+  }catch(error){
+    if(Date.now()-lastGood>3500)setConnected(false);
+    console.warn('Atlas Edge AirWire poll',error);
+    const now=Date.now();if(!lastReportedError||now-lastReportedError>5000){lastReportedError=now;reportError('AirWire live poll',error,{http:'poll failed',payload:'no usable live snapshot'})}
+  }finally{polling=false}
 }
 async function loadVersion(){
   const v=await jsonOrEmpty(CONTRACT.version);const label=document.querySelector('.build-tag');if(label)label.textContent=v.fe?`EDGE ${v.fe}`:'EDGE LIVE';document.title=v.fe?`HPRadar Atlas Edge · FE v${v.fe}`:'HPRadar Atlas Edge';
@@ -124,5 +143,5 @@ function bootstrap(){
   airTimer=setInterval(tick,1000);contextTimer=setInterval(refreshContext,10000);
   window.addEventListener('beforeunload',()=>{clearInterval(airTimer);clearInterval(contextTimer)},{once:true});
 }
-bootstrap();
+try{bootstrap()}catch(error){reportError('Atlas bridge bootstrap',error);throw error}
 })();
