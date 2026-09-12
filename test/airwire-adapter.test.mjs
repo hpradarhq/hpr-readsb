@@ -21,7 +21,8 @@ assert.deepEqual(JSON.parse(JSON.stringify(snapshot.aircraft[0])), {
 assert.throws(()=>adaptEnvelope([2,0,0,[]]),/Invalid AirWire v1/);
 assert.throws(()=>adaptEnvelope({}),/Invalid AirWire v1/);
 
-const ui=fs.readFileSync('hpr/edge/ui/index.html','utf8');
-assert.doesNotMatch(ui,/\bconst F\s*=|\bconst FLAG\s*=|\bfunction decode\s*\(|\benv\s*\[/);
-assert.match(ui,/AirWire\.adaptEnvelope/);
-console.log('G4 PASS: AirWire indexes and flags are isolated in airwire-adapter.js');
+const bridge=fs.readFileSync('hpr/edge/ui/atlas-edge-live-bridge.js','utf8');
+assert.doesNotMatch(bridge,/\bconst F\s*=|\bconst FLAG\s*=|\bfunction decode\s*\(|\benv\s*\[/);
+assert.match(bridge,/AirWire\.adaptEnvelope/);
+assert.match(bridge,/air:'\/api\/air\/v1'/);
+console.log('G4 PASS: AirWire indexes and flags are isolated in airwire-adapter.js; canonical Atlas consumes only named fields through the live bridge');
