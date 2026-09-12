@@ -31,6 +31,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Atlas Edge FE gates G1-G5
+        run: |
+          bash test/edge-ui-g1.sh
+          node test/edge-ui-g2.mjs
+          node test/aircraft-renderer.test.mjs
+          node test/airwire-adapter.test.mjs
+          node test/station-context.test.mjs
+          node test/edge-g6-capacity.test.mjs
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:

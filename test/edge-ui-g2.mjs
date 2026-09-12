@@ -89,4 +89,36 @@ assert(!/fetch\s*\(|XMLHttpRequest|WebSocket\s*\(/.test(scripts), 'G2 fixture mu
 assert(production.includes("'/api/air/v1'"), 'production AirWire endpoint changed');
 assert(production.includes('V4.7 LIVE / AIRWIRE'), 'production FE identity changed');
 
-console.log('G2 PASS: inherited V4.4 interactions are present in the immutable V4.7 shell; production Edge remains unchanged.');
+includesAll('production search', production, [
+  'function searchScore',
+  "if(values.includes(q))return 120",
+  "e.key==='ArrowDown'",
+  "e.key==='ArrowUp'",
+  "e.key==='Enter'",
+  'aria-activedescendant',
+]);
+includesAll('production collection/detail', production, [
+  'function renderList',
+  'function renderDetail',
+  'function closeDetail',
+  'function selectAircraft',
+]);
+includesAll('production controls/preferences', production, [
+  'new maplibregl.NavigationControl',
+  'new maplibregl.GlobeControl',
+  'new maplibregl.FullscreenControl',
+  'function applyLayerVisibility',
+  'function renderTool',
+  'data-layer=',
+  'data-setting=',
+  'function persistPreferences',
+  'function restorePreferences',
+]);
+includesAll('production responsive composition', production, [
+  'function compositionMode',
+  'function syncAdaptiveChrome',
+  '@media(max-width:900px)',
+  '@media(max-width:680px)',
+]);
+
+console.log('G2 PASS: V4.4 interaction behavior is locked in the fixture and the aircraft-only production UI.');
