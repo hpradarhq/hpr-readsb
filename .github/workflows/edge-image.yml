@@ -17,6 +17,10 @@ on:
       - "**/*.md"
   workflow_dispatch:
 
+concurrency:
+  group: hpr-edge-image-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
