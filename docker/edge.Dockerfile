@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
+ARG FE_VERSION=4.7.1
+ARG FE_BUILD=260912.1
+
 FROM debian:bookworm-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,6 +30,9 @@ RUN make clean \
 
 FROM debian:bookworm-slim
 
+ARG FE_VERSION
+ARG FE_BUILD
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       nginx \
@@ -45,7 +51,16 @@ COPY hpr/edge/nginx.conf /etc/nginx/nginx.conf
 COPY hpr/edge/entrypoint.sh /usr/local/bin/hpr-edge
 COPY hpr/edge/ui/ /usr/share/nginx/html/
 
-RUN chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
+RUN sed -i \
+      -e "s|<title>HPRadar Atlas Edge</title>|<title>HPRadar Atlas Edge · FE v${FE_VERSION}</title>|" \
+      -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
+      /usr/share/nginx/html/index.html \
+    && printf '{"fe":"%s","build":"%s"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
+
+LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
+      org.opencontainers.image.version="${FE_VERSION}" \
+      hpradar.fe.build="${FE_BUILD}"
 
 ENV READSB_JSON_INTERVAL=1 \
     READSB_GAIN=auto \
