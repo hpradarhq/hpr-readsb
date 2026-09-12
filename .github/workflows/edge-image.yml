@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - feat/edge-atlas-v4.7-g3-g6
     tags:
       - "edge-v*"
     paths-ignore:
@@ -63,6 +64,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=edge-g6,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-g3-g6' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-
