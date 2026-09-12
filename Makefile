@@ -160,7 +160,7 @@ ifeq ($(HACKRF), yes)
 endif
 
 ifeq ($(PLUTOSDR), yes)
-    SDR_OBJ += sdr_plutosdr.o
+    SDR_OBJ += sdr_plutosdr.o sdr_uplutosdr.o
     CFLAGS += $(shell pkg-config --cflags libiio libad9361) -DENABLE_PLUTOSDR
     LIBS_SDR += $(shell pkg-config --libs libiio libad9361)
 endif
@@ -183,7 +183,7 @@ ifneq ($(shell cat .version 2>/dev/null),prefix $(READSB_VERSION))
 endif
 
 readsb.o: readsb.c *.h .version
-	$(CC) $(CFLAGS) -DHPR_AIRWIRE_HOOK -c $< -o $@
+	$(CC) $(CFLAGS) -DHPR_AIRWIRE_HOOK -DwriteJsonToFile=hprWriteJsonToFile -include hpr/airwire/hpr_airwire.h -c $< -o $@
 
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
