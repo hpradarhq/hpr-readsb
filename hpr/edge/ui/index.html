@@ -15,7 +15,7 @@
     (()=>{
       'use strict';
       const frame=document.getElementById('atlas');
-      const scripts=['airwire-adapter.js','aircraft-renderer.js','station-context.js','atlas-edge-live-bridge.js'];
+      const scripts=['airwire-adapter.js','aircraft-renderer.js','station-context.js','atlas-edge-hardening.js','atlas-edge-live-bridge.js'];
       const inject=(doc,src)=>new Promise((resolve,reject)=>{const s=doc.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error(`failed to load ${src}`));doc.body.appendChild(s)});
       frame.addEventListener('load',async()=>{
         const doc=frame.contentDocument;
