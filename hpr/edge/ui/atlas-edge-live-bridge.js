@@ -111,6 +111,11 @@ function signalReady(snapshot){
   readySent=true;
   window.parent.postMessage({type:'hpr-edge-live-ready',aircraft:snapshot.aircraft.length,generationTime:snapshot.generationTime},location.origin);
 }
+function backendPayloadError(payload){
+  if(!payload||Array.isArray(payload)||typeof payload!=='object'||!payload.error)return null;
+  const code=payload.exit_code==null?'':` · exit code ${payload.exit_code}`;
+  return new Error(`${payload.error}${code}`);
+}
 async function tick(){
   if(polling)return;polling=true;
   try{
@@ -118,6 +123,7 @@ async function tick(){
     if(!r.ok){const body=await r.text();throw new Error(`GET ${CONTRACT.air} HTTP ${r.status}${body?`: ${body.slice(0,240)}`:''}`)}
     const raw=await r.text();let payload;
     try{payload=JSON.parse(raw)}catch(error){throw new Error(`AirWire invalid JSON: ${error.message}; body=${raw.slice(0,240)}`)}
+    const backendError=backendPayloadError(payload);if(backendError)throw backendError;
     const snapshot=AirWire.adaptEnvelope(payload),now=Date.now();
     if(lastCount!=null&&snapshot.totalMessages>=lastCount)msgRate=(snapshot.totalMessages-lastCount)/Math.max((now-lastCountTs)/1000,.001);
     lastCount=snapshot.totalMessages;lastCountTs=now;lastGood=now;replaceAircraft(snapshot);replaceStation();setConnected(true);ensureRotorImages();signalReady(snapshot);
