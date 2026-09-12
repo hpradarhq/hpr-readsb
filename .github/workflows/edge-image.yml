@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - feat/edge-atlas-v4.7-g3-g6
     tags:
       - "edge-v*"
     paths-ignore:
@@ -31,6 +32,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Atlas Edge FE gates G1-G5
+        run: |
+          bash test/edge-ui-g1.sh
+          node test/edge-ui-g2.mjs
+          node test/aircraft-renderer.test.mjs
+          node test/airwire-adapter.test.mjs
+          node test/station-context.test.mjs
+          node test/edge-g6-capacity.test.mjs
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
@@ -54,6 +64,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=edge-g6,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-g3-g6' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-
