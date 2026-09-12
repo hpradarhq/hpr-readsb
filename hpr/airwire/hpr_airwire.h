@@ -1,7 +1,7 @@
 #ifndef HPR_AIRWIRE_H
 #define HPR_AIRWIRE_H
 
-#include "readsb.h"
+#include "../../readsb.h"
 
 #define HPR_AIRWIRE_VERSION 1
 
