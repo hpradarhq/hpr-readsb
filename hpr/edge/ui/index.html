@@ -5,22 +5,81 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>HPRadar Atlas Edge</title>
   <style>
-    html,body,#atlas{width:100%;height:100%;margin:0;border:0;overflow:hidden;background:#02070d}
-    #atlas{display:block}
+    html,body,#mount{width:100%;height:100%;margin:0;border:0;overflow:hidden;background:#02070d}
+    body{font:13px/1.4 Inter,"Segoe UI",system-ui,-apple-system,sans-serif;color:#a8bcd9}
+    #atlas{display:block;width:100%;height:100%;margin:0;border:0;opacity:0;visibility:hidden;transition:opacity .12s linear}
+    #atlas.ready{opacity:1;visibility:visible}
+    #edgeStatus{position:fixed;z-index:10;inset:0;display:grid;place-items:center;background:#02070d;color:#7d93b3;font-size:12px;letter-spacing:.04em}
+    #edgeStatus.hidden{display:none}
   </style>
 </head>
 <body>
-  <iframe id="atlas" src="atlas-v4.7-shell.html" title="HPRadar Atlas Edge" allow="fullscreen" referrerpolicy="same-origin"></iframe>
+  <div id="edgeStatus">Waiting for live readsb / AirWire backend…</div>
+  <div id="mount"></div>
   <script>
     (()=>{
       'use strict';
-      const frame=document.getElementById('atlas');
+      const ENDPOINT='/api/air/v1';
       const scripts=['airwire-adapter.js','aircraft-renderer.js','station-context.js','atlas-edge-hardening.js','atlas-edge-live-bridge.js'];
-      const inject=(doc,src)=>new Promise((resolve,reject)=>{const s=doc.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error(`failed to load ${src}`));doc.body.appendChild(s)});
-      frame.addEventListener('load',async()=>{
-        const doc=frame.contentDocument;
-        try{for(const src of scripts)await inject(doc,src)}catch(error){console.error('Atlas Edge bridge bootstrap failed',error)}
-      },{once:true});
+      const mount=document.getElementById('mount');
+      const status=document.getElementById('edgeStatus');
+      let booting=false;
+
+      async function backendReady(){
+        try{
+          const response=await fetch(ENDPOINT,{cache:'no-store'});
+          if(!response.ok)return false;
+          const payload=await response.json();
+          return Array.isArray(payload)&&payload[0]===1&&Array.isArray(payload[3]);
+        }catch(_){return false}
+      }
+
+      const inject=(doc,src)=>new Promise((resolve,reject)=>{
+        const script=doc.createElement('script');
+        script.src=src;
+        script.onload=resolve;
+        script.onerror=()=>reject(new Error(`failed to load ${src}`));
+        doc.body.appendChild(script);
+      });
+
+      async function createAtlas(){
+        if(booting)return;
+        booting=true;
+        const frame=document.createElement('iframe');
+        frame.id='atlas';
+        frame.title='HPRadar Atlas Edge';
+        frame.allow='fullscreen';
+        frame.referrerPolicy='same-origin';
+        frame.addEventListener('load',async()=>{
+          const doc=frame.contentDocument;
+          try{
+            for(const src of scripts)await inject(doc,src);
+          }catch(error){
+            console.error('Atlas Edge live bridge bootstrap failed',error);
+            status.textContent='Live backend connected; Atlas bridge failed to start.';
+          }
+        },{once:true});
+        mount.appendChild(frame);
+        frame.src='atlas-v4.7-shell.html';
+      }
+
+      async function waitForBackend(){
+        if(await backendReady()){
+          status.textContent='Live backend connected. Loading Atlas…';
+          await createAtlas();
+          return;
+        }
+        setTimeout(waitForBackend,500);
+      }
+
+      window.addEventListener('message',event=>{
+        if(event.origin!==location.origin||event.data?.type!=='hpr-edge-live-ready')return;
+        const frame=document.getElementById('atlas');
+        if(frame)frame.classList.add('ready');
+        status.classList.add('hidden');
+      });
+
+      waitForBackend();
     })();
   </script>
 </body>
