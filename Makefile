@@ -1,5 +1,5 @@
 PROGNAME=readsb
-READSB_VERSION := "$(shell printf '%s' `cat version`; { git show -s --format=format: && printf '%s' ' wiedehopf git: ' && git describe --tags --abbrev --dirty --always && git show -s --format=format:"(committed: %cd)" | tr -cd '[a-z],[A-Z],[0-9],:, ,\-,_,(,)';} || printf '%s' ' compiled on '`date +%y%m%d` )"
+READSB_VERSION := "$(shell printf '%s' `cat version`; { git show -s --format=format: && printf '%s' ' wiedehopf git: ' && git describe --tags --abbrev --dirty --always && git show -s --format=format:\"(committed: %cd)\" | tr -cd '[a-z],[A-Z],[0-9],:, ,\-,_,(,)';} || printf '%s' ' compiled on '`date +%y%m%d` )"
 
 RTLSDR ?= no
 BLADERF ?= no
@@ -156,7 +156,7 @@ endif
 ifeq ($(HACKRF), yes)
     SDR_OBJ += sdr_hackrf.o
     CFLAGS += $(shell pkg-config --cflags libhackrf) -DENABLE_HACKRF
-    LIBS_SDR += $(shell pkg-config --libs libhackrf)
+    LIBS_SDR += $(shell pkg-config --libs libhackRF)
 endif
 
 ifeq ($(PLUTOSDR), yes)
@@ -183,12 +183,12 @@ ifneq ($(shell cat .version 2>/dev/null),prefix $(READSB_VERSION))
 endif
 
 readsb.o: readsb.c *.h .version
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -DHPR_AIRWIRE_HOOK -c $< -o $@
 
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-readsb: readsb.o argp.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o json_out.o net_io.o crc.o demod_2400.o \
+readsb: readsb.o argp.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o json_out.o hpr_airwire.o net_io.o crc.o demod_2400.o \
 	uat2esnt/uat2esnt.o uat2esnt/uat_decode.o \
 	stats.o cpr.o icao_filter.o track.o util.o fasthash.o convert.o sdr_ifile.o sdr_beast.o sdr.o ais_charset.o \
 	globe_index.o geomag.o receiver.o aircraft.o api.o threadpool.o \
