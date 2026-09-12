@@ -49,6 +49,12 @@ struct char_buffer generateVRS(int part, int n_parts, int reduced_data);
 struct char_buffer writeJsonToFile (const char* dir, const char *file, struct char_buffer cb);
 struct char_buffer writeJsonToGzip (const char* dir, const char *file, struct char_buffer cb, int gzip);
 
+/* HPR G1: only readsb.c is compiled with this hook enabled. */
+#ifdef HPR_AIRWIRE_HOOK
+struct char_buffer hprWriteJsonToFile(const char *dir, const char *file, struct char_buffer cb);
+#define writeJsonToFile hprWriteJsonToFile
+#endif
+
 __attribute__ ((format(printf, 3, 4))) static inline char *safe_snprintf(char *p, char *end, const char *format, ...) {
     va_list ap;
     va_start(ap, format);
