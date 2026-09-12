@@ -140,7 +140,7 @@ ifeq ($(RTLSDR), yes)
     endif
 
 	# static linking not well supported, use at own risk
-    ifeq ($(STATIC), yes)
+	ifeq ($(STATIC), yes)
 		LIBS_SDR += -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0
     else
         LIBS_SDR += -lrtlsdr -lusb-1.0
@@ -156,7 +156,7 @@ endif
 ifeq ($(HACKRF), yes)
     SDR_OBJ += sdr_hackrf.o
     CFLAGS += $(shell pkg-config --cflags libhackrf) -DENABLE_HACKRF
-    LIBS_SDR += $(shell pkg-config --libs libhackrf)
+    LIBS_SDR += $(shell pkg-config --libs libhackRF)
 endif
 
 ifeq ($(PLUTOSDR), yes)
@@ -188,7 +188,7 @@ readsb.o: readsb.c *.h .version
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-readsb: readsb.o argp.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o json_out.o hpr_airwire.o net_io.o crc.o demod_2400.o \
+readsb: readsb.o argp.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o json_out.o hpr/airwire/hpr_airwire.o net_io.o crc.o demod_2400.o \
 	uat2esnt/uat2esnt.o uat2esnt/uat_decode.o \
 	stats.o cpr.o icao_filter.o track.o util.o fasthash.o convert.o sdr_ifile.o sdr_beast.o sdr.o ais_charset.o \
 	globe_index.o geomag.o receiver.o aircraft.o api.o threadpool.o \
@@ -200,7 +200,7 @@ viewadsb: readsb
 	cp readsb viewadsb
 
 clean:
-	rm -f *.o uat2esnt/*.o oneoff/*.o compat/clock_gettime/*.o compat/clock_nanosleep/*.o compat/apple/*.o readsb viewadsb cprtests crctests oneoff/convert_benchmark
+	rm -f *.o hpr/airwire/*.o uat2esnt/*.o oneoff/*.o compat/clock_gettime/*.o compat/clock_nanosleep/*.o compat/apple/*.o readsb viewadsb cprtests crctests oneoff/convert_benchmark
 
 test: cprtest crctest
 
