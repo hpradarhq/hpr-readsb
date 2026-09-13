@@ -25,26 +25,27 @@ def wait_port(port, timeout=8.0):
     raise RuntimeError(f"port {port} did not open")
 
 
-def sbs_line(i, state_bump=0):
+def sbs_line(i, pos_bump=0.0, ident_bump=0):
     icao = 0xA00000 + i
-    lat = 10.0 + (i % 20) * 0.20
-    lon = 100.0 + (i % 25) * 0.20
-    alt = 5000 + (i % 100) * 250 + state_bump * 25
+    lat = 10.0 + (i % 20) * 0.20 + pos_bump
+    lon = 100.0 + (i % 25) * 0.20 + pos_bump
+    alt = 5000 + (i % 100) * 250
     gs = 180 + (i % 300)
     track = (i * 7) % 360
     vr = ((i % 9) - 4) * 128
-    callsign = f"H{i:06d}"[-8:]
+    prefix = chr(ord("A") + (ident_bump % 26))
+    callsign = f"{prefix}{i:06d}"[-8:]
     return (
         f"MSG,3,1,1,{icao:06X},1,2026/09/13,10:00:00.000,2026/09/13,10:00:00.000,"
         f"{callsign},{alt},{gs},{track},{lat:.6f},{lon:.6f},{vr},1200,0,0,0,0\r\n"
     ).encode()
 
 
-def feed_all(state_bump=0, repeats=2):
+def feed_all(pos_bump=0.0, ident_bump=0, repeats=2):
     with socket.create_connection(("127.0.0.1", SBS_PORT), timeout=2) as s:
         for _ in range(repeats):
             for i in range(AIRCRAFT):
-                s.sendall(sbs_line(i, state_bump))
+                s.sendall(sbs_line(i, pos_bump, ident_bump))
 
 
 def recv_exact(s, n):
@@ -182,10 +183,10 @@ def main():
                 raise RuntimeError(f"bbox filtering ineffective: {len(bpos)} of {len(pos)}")
             print(f"bbox: {len(bpos)} position")
 
-            # MSG,3 barometric altitude is an explicit SBS field and part of 0x02.
-            # A 25 ft change drives a native live state delta without synthetic
-            # horizontal jumps that readsb correctly rejects as implausible.
-            feed_all(state_bump=1, repeats=2)
+            # About 15 m diagonal near this latitude after a one-second dwell:
+            # physically plausible for the synthetic speeds, while changing the
+            # scaled lat/lon bytes in 0x02 by ~60 integer units.
+            feed_all(pos_bump=0.0001, repeats=2)
             dpos = set()
             deadline = time.time() + 4
             while time.time() < deadline and len(dpos) < 5:
@@ -208,11 +209,15 @@ def main():
                 snapshot(x, 390)
             print("4 clients: PASS")
 
+            # Keep one browser unread while repeatedly changing identity/status.
+            # This stresses bounded client handling without relying on implausible
+            # aircraft movement in the injector.
             slow = ws_connect()
             rss0 = rss_kib(proc.pid)
-            for wave in range(12):
-                feed_all(state_bump=2 + wave, repeats=1)
-            time.sleep(1.0)
+            for wave in range(1, 13):
+                feed_all(pos_bump=0.0001, ident_bump=wave, repeats=1)
+                time.sleep(0.05)
+            time.sleep(0.5)
             rss1 = rss_kib(proc.pid)
             if rss1 - rss0 > 65536:
                 raise RuntimeError(f"RSS grew too much: {rss0} -> {rss1} KiB")
