@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.7.4-edge.1
-ARG FE_BUILD=260913.1
+ARG FE_VERSION=4.7.5-edge.1
+ARG FE_BUILD=260913.2
 
 FROM debian:bookworm-slim AS builder
 
@@ -55,17 +55,19 @@ COPY hpr/edge/ui/ /usr/share/nginx/html/
 RUN sed -i \
       -e "s|<title>HPRadar Atlas Edge</title>|<title>HPRadar Atlas Edge · FE v${FE_VERSION}</title>|" \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
-      -e 's|</head>|<script src="/hpr-config.js"></script>\n</head>|' \
+      -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","trace":"readsb-real"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
       hpradar.fe.build="${FE_BUILD}" \
-      hpradar.airwire="binary-v1"
+      hpradar.airwire="binary-v1" \
+      hpradar.trace="readsb-real"
 
 ENV READSB_JSON_INTERVAL=1 \
+    READSB_TRACE_INTERVAL=1 \
     READSB_GAIN=auto \
     HPR_UPSTREAM_PORT=30004 \
     HPR_AIRWIRE_WS_PORT=30154
