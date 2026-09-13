@@ -6,6 +6,7 @@ on:
       - dev
       - "feat/edge-airwire-bin-*"
       - feat/edge-atlas-v4.7-native-airwire-v2
+      - feat/edge-atlas-real-trace-replay
     tags:
       - "edge-v*"
     paths-ignore:
@@ -38,7 +39,10 @@ jobs:
           sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev
 
       - name: Edge FE syntax
-        run: node --check hpr/edge/ui/airwire-adapter.js
+        run: |
+          node --check hpr/edge/ui/airwire-adapter.js
+          node --check hpr/edge/ui/aircraft-renderer.js
+          node --check hpr/edge/ui/edge-history.js
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
@@ -83,12 +87,13 @@ jobs:
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=edge-test,enable=${{ startsWith(github.ref, 'refs/heads/feat/edge-airwire-bin-') }}
             type=raw,value=edge-native,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-native-airwire-v2' }}
+            type=raw,value=edge-next,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-real-trace-replay' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-,format=long
           labels: |
             org.opencontainers.image.title=HPRadar readsb Edge
-            org.opencontainers.image.description=HPR readsb + native binary AirWire + Atlas V4.7 Edge UI
+            org.opencontainers.image.description=HPR readsb + native binary AirWire + Atlas Edge real trace/replay UI
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push
