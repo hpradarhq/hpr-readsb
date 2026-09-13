@@ -25,13 +25,13 @@ def wait_port(port, timeout=8.0):
     raise RuntimeError(f"port {port} did not open")
 
 
-def sbs_line(i, bump=0.0):
+def sbs_line(i, motion_bump=0.0):
     icao = 0xA00000 + i
-    lat = 10.0 + (i % 20) * 0.20 + bump
-    lon = 100.0 + (i % 25) * 0.20 + bump
+    lat = 10.0 + (i % 20) * 0.20
+    lon = 100.0 + (i % 25) * 0.20
     alt = 5000 + (i % 100) * 250
-    gs = 180 + (i % 300)
-    track = (i * 7) % 360
+    gs = 180 + (i % 300) + motion_bump
+    track = ((i * 7) + motion_bump) % 360
     vr = ((i % 9) - 4) * 128
     callsign = f"H{i:06d}"[-8:]
     return (
@@ -40,11 +40,11 @@ def sbs_line(i, bump=0.0):
     ).encode()
 
 
-def feed_all(bump=0.0, repeats=2):
+def feed_all(motion_bump=0.0, repeats=2):
     with socket.create_connection(("127.0.0.1", SBS_PORT), timeout=2) as s:
         for _ in range(repeats):
             for i in range(AIRCRAFT):
-                s.sendall(sbs_line(i, bump))
+                s.sendall(sbs_line(i, motion_bump))
 
 
 def recv_exact(s, n):
@@ -182,7 +182,9 @@ def main():
                 raise RuntimeError(f"bbox filtering ineffective: {len(bpos)} of {len(pos)}")
             print(f"bbox: {len(bpos)} position")
 
-            feed_all(bump=0.01, repeats=2)
+            # Change motion while keeping position physically plausible. The wire 0x02
+            # contains GS/track, so this exercises native live position/motion deltas.
+            feed_all(motion_bump=1.0, repeats=2)
             dpos = set()
             deadline = time.time() + 4
             while time.time() < deadline and len(dpos) < 5:
@@ -191,8 +193,8 @@ def main():
                     pp, _ = parse_airwire(p)
                     dpos |= pp
             if not dpos:
-                raise RuntimeError("no live position delta received")
-            print(f"delta: {len(dpos)} position in active bbox")
+                raise RuntimeError("no live position/motion delta received")
+            print(f"delta: {len(dpos)} position/motion in active bbox")
             c.close()
 
             c2 = ws_connect()
@@ -208,7 +210,7 @@ def main():
             slow = ws_connect()
             rss0 = rss_kib(proc.pid)
             for wave in range(12):
-                feed_all(bump=0.02 + wave * 0.001, repeats=1)
+                feed_all(motion_bump=2.0 + wave, repeats=1)
             time.sleep(1.0)
             rss1 = rss_kib(proc.pid)
             if rss1 - rss0 > 65536:
