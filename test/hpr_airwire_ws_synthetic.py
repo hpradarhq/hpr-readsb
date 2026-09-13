@@ -153,8 +153,11 @@ def main():
     ap.add_argument("--readsb", default="./readsb")
     args = ap.parse_args()
     with tempfile.TemporaryDirectory(prefix="hpr-airwire-") as outdir:
+        # SBS is only the synthetic transport here; it does not carry ADS-B CPR
+        # reliability evidence. json-reliable=0 is test-local so the injected
+        # lat/lon enters readsb's reliable projection without changing product defaults.
         proc = subprocess.Popen([
-            args.readsb, "--net", "--net-only", "--quiet",
+            args.readsb, "--net", "--net-only", "--quiet", "--json-reliable=0",
             f"--net-sbs-in-port={SBS_PORT}",
             f"--write-json={outdir}", "--write-json-every=1",
         ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
