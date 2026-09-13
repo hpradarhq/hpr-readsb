@@ -15,12 +15,10 @@ LAT="${FEEDER_LAT:-${RECEIVER_LAT:-}}"
 LON="${FEEDER_LONG:-${RECEIVER_LON:-}}"
 UUID="${MULTIFEEDER_UUID:-${HPR_FEEDER_UUID:-}}"
 
-# Expose feeder metadata next to readsb JSON for Atlas Edge / diagnostics.
 cat > /run/readsb/station.json <<EOF
 {"name":"${FEEDER_NAME:-}","lat":${LAT:-null},"lon":${LON:-null},"alt_m":${FEEDER_ALT_M:-null},"alt_ft":${FEEDER_ALT_FT:-null},"multifeeder_uuid":"${MULTIFEEDER_UUID:-}","adsbx_uuid":"${ADSBX_UUID:-}","heywhatsthat_id":"${FEEDER_HEYWHATSTHAT_ID:-}","heywhatsthat_alts":"${FEEDER_HEYWHATSTHAT_ALTS:-}"}
 EOF
 
-# nginx only serves Atlas Edge UI and readsb-generated JSON.
 nginx
 
 set -- /usr/local/bin/readsb \
@@ -30,6 +28,8 @@ set -- /usr/local/bin/readsb \
   --quiet \
   --write-json=/run/readsb \
   --write-json-every="${READSB_JSON_INTERVAL:-1}" \
+  --write-json-globe-index \
+  --json-trace-interval="${READSB_TRACE_INTERVAL:-1}" \
   --db-file=/usr/local/share/hpr-readsb/aircraft.csv.gz \
   --net-ro-port=30002 \
   --net-sbs-port=30003 \
@@ -58,5 +58,5 @@ if [ -n "${HPR_UPSTREAM_HOST:-}" ]; then
   set -- "$@" "--net-connector=${HPR_UPSTREAM_HOST},${HPR_UPSTREAM_PORT:-30004},beast_reduce_plus_out"
 fi
 
-printf '%s\n' "HPR Edge starting: station=${FEEDER_NAME:-hpr-edge} serial=${ADSB_SDR_SERIAL:-auto} Atlas=:80 BeastReduce=:30004 Beast=:30005"
+printf '%s\n' "HPR Edge starting: station=${FEEDER_NAME:-hpr-edge} serial=${ADSB_SDR_SERIAL:-auto} Atlas=:80 AirWire=:${HPR_AIRWIRE_WS_PORT:-30154} BeastReduce=:30004 Beast=:30005"
 exec "$@"
