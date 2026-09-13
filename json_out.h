@@ -13,10 +13,10 @@
 // the Free Software Foundation, either version 3 of the License, or
 // any later version.
 //
-// This file is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// General Public License for more details.
+// This file is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
@@ -49,10 +49,11 @@ struct char_buffer generateVRS(int part, int n_parts, int reduced_data);
 struct char_buffer writeJsonToFile (const char* dir, const char *file, struct char_buffer cb);
 struct char_buffer writeJsonToGzip (const char* dir, const char *file, struct char_buffer cb, int gzip);
 
-/* HPR G1: only readsb.c is compiled with this hook enabled. */
+/* HPR hook: only readsb.c is compiled with HPR_AIRWIRE_HOOK. */
 #ifdef HPR_AIRWIRE_HOOK
 struct char_buffer hprWriteJsonToFile(const char *dir, const char *file, struct char_buffer cb);
-#define writeJsonToFile hprWriteJsonToFile
+void hprAirWireWsStart(void);
+#define writeJsonToFile(dir, file, cb) (hprAirWireWsStart(), hprWriteJsonToFile((dir), (file), (cb)))
 #endif
 
 __attribute__ ((format(printf, 3, 4))) static inline char *safe_snprintf(char *p, char *end, const char *format, ...) {
