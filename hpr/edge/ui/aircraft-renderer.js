@@ -1,26 +1,44 @@
-/* Atlas Edge renderer: V4.7 fixed-wing family plus exact V4.8.3 rotorcraft mappings. */
+/* Atlas Edge aircraft renderer.
+ * Type-aware silhouettes + altitude colour bands, driven by local readsb DB metadata.
+ * No generic triangle renderer.
+ */
 (()=>{'use strict';
-const BASE={
-  airliner:{viewBox:'-1 -2 34 34',path:'M16 1c-.17 0-.67.58-.9 1.03-.6 1.21-.6 1.15-.65 5.2-.04 2.97-.08 3.77-.18 3.9-.15.17-1.82 1.1-1.98 1.1-.08 0-.1-.25-.05-.83.03-.5.01-.92-.05-1.08-.1-.25-.13-.26-.71-.26-.82 0-.86.07-.78 1.5.03.6.08 1.17.11 1.25.05.12-.02.2-.25.33l-8 4.2c-.2.2-.18.1-.19 1.29 3.9-1.2 3.71-1.21 3.93-1.21.06 0 .1 0 .13.14.08.3.28.3.28-.04 0-.25.03-.27 1.16-.6.65-.2 1.22-.35 1.28-.35.05 0 .12.04.15.17.07.3.27.27.27-.08 0-.25.01-.27.7-.47.68-.1.98-.09 1.47-.1.18 0 .22 0 .26.18.06.34.22.35.27-.01.04-.2.1-.17 1.06-.14l1.07.02.05 4.2c.05 3.84.07 4.28.26 5.09.11.49.2.99.2 1.11 0 .19-.31.43-1.93 1.5l-1.93 1.26v1.02l4.13-.95.63 1.54c.05.07.12.09.19.09s.14-.02.19-.09l.63-1.54 4.13.95V29.3l-1.93-1.27c-1.62-1.06-1.93-1.3-1.93-1.49 0-.12.09-.62.2-1.11.19-.81.2-1.25.26-5.09l.05-4.2 1.07-.02c.96-.03 1.02-.05 1.06.14.05.36.21.35.27 0 .04-.17.08-.16.26-.16.49 0 .8-.02 1.48.1.68.2.69.21.69.46 0 .35.2.38.27.08.03-.13.1-.17.15-.17.06 0 .63.15 1.28.34 1.13.34 1.16.36 1.16.61 0 .35.2.34.28.04.03-.13.07-.14.13-.14.22 0 .03 0 3.93 1.2-.01-1.18.02-1.07-.19-1.27l-8-4.21c-.23-.12-.3-.21-.25-.33.03-.08.08-.65.11-1.25.08-1.43.04-1.5-.78-1.5-.58 0-.61.01-.71.26-.06.16-.08.58-.05 1.08.04.58.03.83-.05.83-.16 0-1.83-.93-1.98-1.1-.1-.13-.14-.93-.18-3.9-.05-4.05-.05-3.99-.65-5.2C16.67 1.58 16.17 1 16 1z'},
-  heavy_2e:{viewBox:'0 -3.2 64.2 64.2',path:'m 31.414,2.728 c -0.314,0.712 -1.296,2.377 -1.534,6.133 l -0.086,13.379 c 0.006,0.400 -0.380,0.888 -0.945,1.252 l -2.631,1.729 c 0.157,-0.904 0.237,-3.403 -0.162,-3.850 l -2.686,0.006 c -0.336,1.065 -0.358,2.518 -0.109,4.088 h 0.434 L 24.057,26.689 8.611,36.852 7.418,38.432 7.381,39.027 8.875,38.166 l 8.295,-2.771 0.072,0.730 0.156,-0.004 0.150,-0.859 3.799,-1.234 0.074,0.727 0.119,0.004 0.117,-0.832 2.182,-0.730 h 1.670 l 0.061,0.822 h 0.176 l 0.062,-0.822 4.018,-0.002 v 13.602 c 0.051,1.559 0.465,3.272 0.826,4.963 l -6.836,5.426 c -0.097,0.802 -0.003,1.372 0.049,1.885 l 7.734,-2.795 0.477,1.973 h 0.232 l 0.477,-1.973 7.736,2.795 c 0.052,-0.513 0.146,-1.083 0.049,-1.885 l -6.836,-5.426 c 0.361,-1.691 0.775,-3.404 0.826,-4.963 V 33.193 l 4.016,0.002 0.062,0.822 h 0.178 L 38.875,33.195 h 1.672 l 2.182,0.730 0.117,0.832 0.119,-0.004 0.072,-0.727 3.799,1.234 0.152,0.859 0.154,0.004 0.072,-0.730 8.297,2.771 1.492,0.861 -0.037,-0.596 -1.191,-1.580 -15.447,-10.162 0.363,-1.225 H 41.125 c 0.248,-1.569 0.225,-3.023 -0.111,-4.088 l -2.686,-0.006 c -0.399,0.447 -0.317,2.945 -0.160,3.850 L 35.535,23.492 C 34.970,23.128 34.584,22.640 34.590,22.240 L 34.504,8.910 C 34.193,4.926 33.369,3.602 32.934,2.722 32.442,1.732 31.894,1.828 31.414,2.728 Z'},
-  twin_large:{viewBox:'-2 -3 25 25',path:'M10.1,18.34H7l0-.21c-.08-.54,0-.87.11-1L7.19,17l.2,0,2.35-.33c-.16-.82-.42-2.9-.42-3.14s0-2.71,0-3.51H8c-.12,1.34-.41,1.36-.55,1.37h0c-.19,0-.46,0-.6-1.55L.27,9.52l0-.25c.06-.73.31-.9.45-.93l6-.48a3.65,3.65,0,0,1,.3-2,.45.45,0,0,1,.32-.16h0a.39.39,0,0,1,.3.12A3.67,3.67,0,0,1,8,7.77l1.26-.07c0-.71,0-2.92,0-4.48A3.84,3.84,0,0,1,10.1.4a.4.4,0,0,1,.28-.16h.23A.4.4,0,0,1,10.9.4a3.84,3.84,0,0,1,.87,2.81c0,1.55,0,3.77,0,4.48L13,7.77a3.67,3.67,0,0,1,.29-1.94.38.38,0,0,1,.28-.12.46.46,0,0,1,.34.16,3.66,3.66,0,0,1,.3,2l6,.48c.18,0,.43.21.49.94l0,.25-6.53.3c-.14,1.55-.42,1.55-.59,1.55s-.45,0-.57-1.37H11.74c0,.8,0,3.27,0,3.51s-.26,2.32-.42,3.14l2.38.34h.11l.13.13c.15.18.19.51.11,1l0,.21H10.9l-.4,1Z'}
+const SHAPES={
+ airliner:{vb:'0 0 64 64',body:'<path d="M30 3h4l3 20 21 10v4l-21-4-2 17 8 6v3l-11-3-11 3v-3l8-6-2-17-21 4v-4l21-10z"/>'},
+ heavy4:{vb:'0 0 64 64',body:'<path d="M29 2h6l3 20 22 9v5l-22-3-2 17 10 6v4l-14-4-14 4v-4l10-6-2-17-22 3v-5l22-9z"/><circle cx="17" cy="31" r="2.4"/><circle cx="24" cy="29" r="2.4"/><circle cx="40" cy="29" r="2.4"/><circle cx="47" cy="31" r="2.4"/>'},
+ jet:{vb:'0 0 64 64',body:'<path d="M30 5h4l3 19 18 8v4l-18-3-2 15 8 6v3l-11-3-11 3v-3l8-6-2-15-18 3v-4l18-8z"/>'},
+ fighter:{vb:'0 0 64 64',body:'<path d="M31 3h2l5 20 20 10-2 5-17-5 7 17-5 2-9-9-9 9-5-2 7-17-17 5-2-5 20-10z"/>'},
+ twinprop:{vb:'0 0 64 64',body:'<path d="M30 5h4l2 18 22 8v5l-21-3-2 16 9 6v3l-12-3-12 3v-3l9-6-2-16-21 3v-5l22-8z"/><circle cx="19" cy="30" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="45" cy="30" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/>'},
+ transport:{vb:'0 0 64 64',body:'<path d="M29 4h6l2 18 23 9v5l-22-3-2 17 10 5v4l-14-3-14 3v-4l10-5-2-17-22 3v-5l23-9z"/><rect x="14" y="27" width="7" height="5" rx="2"/><rect x="43" y="27" width="7" height="5" rx="2"/>'},
+ ga:{vb:'0 0 64 64',body:'<path d="M30 7h4l2 17 20 8v4l-20-3-2 16 8 5v3l-10-3-10 3v-3l8-5-2-16-20 3v-4l20-8z"/><path d="M25 11h14v2H25z"/>'},
+ helicopter:{vb:'0 0 64 64',body:'<path d="M21 30c2-8 8-12 17-10 8 2 11 8 9 14-2 5-7 8-15 8H20c-5 0-8-3-8-6 0-4 3-6 9-6z"/><path d="M31 20V13h3v7M6 11h53v3H6zM47 31h11v3H47zM56 25h3v15h-3zM24 43l-5 8h4l5-8zM39 43l5 8h4l-5-8z"/>'},
+ tiltrotor:{vb:'0 0 64 64',body:'<path d="M29 5h6l2 20 18 6v5l-18-2-2 16 9 6v3l-12-3-12 3v-3l9-6-2-16-18 2v-5l18-6z"/><circle cx="13" cy="30" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="51" cy="30" r="7" fill="none" stroke="currentColor" stroke-width="2"/>'},
+ uav:{vb:'0 0 64 64',body:'<path d="M5 37 32 19l27 18-22-6-5 14-5-14z"/><path d="M30 8h4v15h-4z"/>'},
+ glider:{vb:'0 0 64 64',body:'<path d="M30 7h4l2 20 26 5v3l-26-2-2 17 8 5v3l-10-3-10 3v-3l8-5-2-17-26 2v-3l26-5z"/>'},
+ balloon:{vb:'0 0 64 64',body:'<path d="M32 5c-10 0-18 8-18 19 0 12 9 21 14 25h8c5-4 14-13 14-25C50 13 42 5 32 5z"/><path d="M28 49h8l3 8H25z"/>'},
+ ground:{vb:'0 0 64 64',body:'<rect x="10" y="22" width="44" height="24" rx="7"/><path d="M18 22l5-8h18l5 8z"/><circle cx="20" cy="48" r="5"/><circle cx="44" cy="48" r="5"/>'},
+ unknown:{vb:'0 0 64 64',body:'<path d="M30 5h4l3 20 20 9v4l-20-4-2 16 8 6v3l-11-3-11 3v-3l8-6-2-16-20 4v-4l20-9z"/>'}
 };
-const HEAVY=new Set(['A359','A35K','B788','B789','B78X','B772','B77L','B773','B77W','A332','A333','A338','A339','A343','A346','A388']);
-const TWIN=new Set(['AT72','AT73','AT75','AT76','DH8A','DH8B','DH8C','DH8D']);
-const ROTOR_TYPES=new Set(['AS50','AS55','GAZL','B407','R22','R44','R66','MH6','B222','EC35','EC45','EC30','B429','A109','AS65','S76','A139','A169','H160','EC75','A189','S61','EC25','EH10','H53','S92','NH90','H60','PUMA','AS32','MI24','TIGR','H64','A129','AH1J','AH1Z','H47','H46','V22','V22F','B609','B609F']);
-const EXACT=Object.freeze({
-  MH6:{file:'xBoeing_MH-6_1.svg',label:'Boeing MH-6'},B222:{file:'xBell_222_1.svg',label:'Bell 222'},
-  V22:{file:'V22.svg',label:'V-22 Osprey'},AH1Z:{file:'Bell_AH-1Z_Viper.svg',label:'Bell AH-1Z Viper'},
-  AH1J:{file:'Bell_AH-1J.svg',label:'Bell AH-1J'},A129:{file:'Augusta_A129.svg',label:'Agusta A129'}
-});
+const COLORS={g:'#7b8794',c0:'#2ecc71',c1:'#3498db',c2:'#f1c40f',c3:'#e67e22',c4:'#e74c3c'};
+const HEAVY4=/^(A124|A225|AN22|A388|A34[0-9]|B74[0-9A-Z]|IL96)$/;
+const TWINPROP=/^(AT7[2356]|DH8[A-D]|SF34|PA34|BE58|BE9L|BE20)$/;
+const TRANSPORT=/^(C130|P3|AN12|IL76|C17|C5M?|E3CF|E3TF|E6)$/;
+const GA=/^(C1(52|72|82)|C206|C210|PA2[8]|PA32|BE36|SR2[02]|PC12|TBM[789])$/;
+const FIGHTER=/^(A10|F1[4568]|F22A?|F35|F4|F5|MG(19|25|29|31)|SU(15|24|25|27)|RFAL|EF2K|TYPH|T38|TOR|MIR4)$/;
+const UAV=/^(RQ4|MQ[19]|TB2|ANKA)$/;
+const HELI=/^(AH64|AH1|UH60|S70|CH47|CH53|AS(32|33|50|55|65)|EC(20|25|30|35|45|55|65|75)|R(22|44|66)|B0[67]|B12|B47G|MI(8|17|24|28)|PUMA|TIGR|H(53|60|64|160)|S(61|76|92)|A(109|129|139|169|189)|B222|B407|B429|MH6)$/;
+const TILT=/^(V22|V22F|B609|B609F)$/;
+const GLIDER=/^(GLID|ASK2|DG80)$/;
+const BALLOON=/^(BALL)$/;
 const code=a=>String(a?.typeCode||'').trim().toUpperCase();
-function rotorcraftReason(a){const c=code(a);if(c&&ROTOR_TYPES.has(c))return'type';const description=String(a?.typeDescription||a?.airframeClass||a?.type||'').toUpperCase();if(description.includes('ROTORCRAFT')||description.includes('HELICOPTER')||description.includes('TILTROTOR'))return'description';if(String(a?.categoryCode||'').toUpperCase()==='A7')return'category';return''}
-function isRotorcraft(a){return a?.kind==='aircraft'&&!!rotorcraftReason(a)}
-function exactRotorcraft(a){if(!isRotorcraft(a))return null;const item=EXACT[code(a)];return item?{code:code(a),label:item.label,url:`assets/rotorcraft/${item.file}`} :null}
-function baseKey(a){const c=code(a);if(HEAVY.has(c))return'heavy_2e';if(TWIN.has(c))return'twin_large';return'airliner'}
-function iconKey(a){const exact=exactRotorcraft(a);return exact?`rotor-${exact.code}`:baseKey(a)}
-function baseSvg(key='airliner',color='currentColor'){const item=BASE[key]||BASE.airliner;return `<svg viewBox="${item.viewBox}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="${item.path}" fill="${color}" stroke="#111827" stroke-width=".7" stroke-linejoin="round"/></svg>`}
-function markup(a){const exact=exactRotorcraft(a);return exact?`<img class="rotorcraft-art" src="${exact.url}" alt="${exact.label}">`:baseSvg(baseKey(a),'currentColor')}
-function mapImages(color){const images=Object.keys(BASE).map(key=>({name:`aircraft-${key}`,svg:baseSvg(key,color)}));Object.entries(EXACT).forEach(([key,item])=>images.push({name:`aircraft-rotor-${key}`,url:`assets/rotorcraft/${item.file}`}));return images}
-window.HPRAircraftRenderer=Object.freeze({baseKey,iconKey,markup,mapImages,isRotorcraft,rotorcraftReason,exactRotorcraft});
+function band(a){if(a?.isGround)return'g';const n=Number(a?.barometricAltitudeFt);if(!Number.isFinite(n))return'c2';if(n<5000)return'c0';if(n<15000)return'c1';if(n<30000)return'c2';if(n<42000)return'c3';return'c4'}
+function family(a){const c=code(a),cat=String(a?.categoryCode||'').toUpperCase();if(a?.isGround||cat.startsWith('C'))return'ground';if(TILT.test(c))return'tiltrotor';if(HELI.test(c)||cat==='A7')return'helicopter';if(UAV.test(c)||cat==='B6')return'uav';if(GLIDER.test(c)||cat==='B1')return'glider';if(BALLOON.test(c)||cat==='B2')return'balloon';if(FIGHTER.test(c)||cat==='A6')return'fighter';if(HEAVY4.test(c)||cat==='A5')return'heavy4';if(TRANSPORT.test(c))return'transport';if(TWINPROP.test(c))return'twinprop';if(GA.test(c)||cat==='A1')return'ga';if(/^(GLF|CL[356]|C[67]50|CRJ|E1[3479]|E45|BCS|SF50)/.test(c))return'jet';if(c||cat==='A3'||cat==='A4')return'airliner';return'unknown'}
+function isRotorcraft(a){const f=family(a);return f==='helicopter'||f==='tiltrotor'}
+function rotorcraftReason(a){return isRotorcraft(a)?(code(a)?'type':'category'):''}
+function exactRotorcraft(a){return isRotorcraft(a)?{code:code(a),label:code(a)||'Rotorcraft'}:null}
+function svg(f,color){const s=SHAPES[f]||SHAPES.unknown;return `<svg viewBox="${s.vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="color:${color}"><g fill="${color}" stroke="#0b1220" stroke-width="1.15" stroke-linejoin="round" stroke-linecap="round">${s.body}</g></svg>`}
+function iconKey(a){return`${family(a)}-${band(a)}`}
+function markup(a){return svg(family(a),COLORS[band(a)]||COLORS.c2)}
+function mapImages(){const out=[];for(const f of Object.keys(SHAPES))for(const [b,color]of Object.entries(COLORS))out.push({name:`aircraft-${f}-${b}`,svg:svg(f,color)});return out}
+window.HPRAircraftRenderer=Object.freeze({baseKey:family,family,band,iconKey,markup,mapImages,isRotorcraft,rotorcraftReason,exactRotorcraft});
 })();
