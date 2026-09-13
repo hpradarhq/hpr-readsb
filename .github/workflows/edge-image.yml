@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - "feat/edge-airwire-bin-*"
     tags:
       - "edge-v*"
     paths-ignore:
@@ -23,8 +24,30 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/hpr-readsb-edge
 
 jobs:
+  test:
+    name: AirWire backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev
+
+      - name: Golden vectors
+        run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
+
+      - name: Build readsb
+        run: make -j"$(nproc)" readsb DISABLE_INTERACTIVE=yes OPTIMIZE="-O2"
+
+      - name: Synthetic 400-aircraft websocket load
+        run: python3 test/hpr_airwire_ws_synthetic.py --readsb ./readsb
+
   build:
     name: Build arm64 + armv7
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -54,9 +77,10 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=edge-test,enable=${{ startsWith(github.ref, 'refs/heads/feat/edge-airwire-bin-') }}
             type=ref,event=tag
             type=ref,event=pr
-            type=sha,prefix=edge-
+            type=sha,prefix=edge-,format=long
           labels: |
             org.opencontainers.image.title=HPRadar readsb Edge
             org.opencontainers.image.description=HPR readsb + AirWire + Atlas Edge UI
