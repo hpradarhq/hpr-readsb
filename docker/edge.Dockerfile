@@ -21,6 +21,7 @@ COPY . .
 
 RUN make clean \
     && make -j"$(nproc)" readsb RTLSDR=yes DISABLE_INTERACTIVE=yes OPTIMIZE="-O2" \
+    && make hpr-airwire-test DISABLE_INTERACTIVE=yes \
     && strip readsb \
     && mkdir -p /out \
     && cp readsb /out/readsb \
@@ -54,17 +55,20 @@ COPY hpr/edge/ui/ /usr/share/nginx/html/
 RUN sed -i \
       -e "s|<title>HPRadar Atlas Edge</title>|<title>HPRadar Atlas Edge · FE v${FE_VERSION}</title>|" \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
+      -e 's|</head>|<script src="/hpr-config.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
-      hpradar.fe.build="${FE_BUILD}"
+      hpradar.fe.build="${FE_BUILD}" \
+      hpradar.airwire="binary-v1"
 
 ENV READSB_JSON_INTERVAL=1 \
     READSB_GAIN=auto \
-    HPR_UPSTREAM_PORT=30004
+    HPR_UPSTREAM_PORT=30004 \
+    HPR_AIRWIRE_WS_PORT=30154
 
 EXPOSE 80 30002 30003 30004 30005
 
