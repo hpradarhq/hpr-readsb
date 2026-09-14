@@ -39,7 +39,16 @@ jobs:
           sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev
 
       - name: Edge FE syntax
-        run: node --check hpr/edge/ui/airwire-adapter.js
+        run: |
+          node --check hpr/edge/ui/airwire-adapter.js
+          node --check hpr/edge/ui/hpr-config.js
+
+      - name: Gate 1 local aircraft rows
+        run: |
+          test -s hpr/edge/ui/edge-g1-list.css
+          grep -Fq 'edge-g1-list.css' hpr/edge/ui/hpr-config.js
+          grep -Fq '#airList .row>.plane-icon{display:none}' hpr/edge/ui/edge-g1-list.css
+          grep -Fq '#airList .row{grid-template-columns:8px 1fr auto}' hpr/edge/ui/edge-g1-list.css
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
