@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.7.6-edge.1
-ARG FE_BUILD=260914.1
+ARG FE_VERSION=4.7.7-edge.1
+ARG FE_BUILD=260914.2
 
 FROM debian:bookworm-slim AS builder
 
@@ -55,15 +55,15 @@ COPY hpr/edge/ui/ /usr/share/nginx/html/
 RUN sed -i \
       -e "s|<title>HPRadar Atlas Edge</title>|<title>HPRadar Atlas Edge · FE v${FE_VERSION}</title>|" \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
-      -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n</head>|' \
+      -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n<script src="/edge-ui-patch.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","trace":"readsb-real","marker":"cf-acicon"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"readsb-real","marker":"cf-acicon","flags":"icao24","photo":"planespotters-lazy"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
       hpradar.fe.build="${FE_BUILD}" \
-      hpradar.airwire="binary-v1" \
+      hpradar.airwire="binary-v1+meta0a" \
       hpradar.trace="readsb-real" \
       hpradar.marker="cf-acicon"
 
