@@ -30,7 +30,7 @@ assert(filterText.includes('sansha'),'Sansha not blocked');
 assert(filterText.includes('nansha'),'Nansha not blocked');
 assert.strictEqual(calls.sources.length,1,'label source not added');
 const names=calls.sources[0][1].data.features.map(f=>f.properties.name);
-assert.deepStrictEqual(names,['HOÀNG SA','TRƯỜNG SA']);
+assert.strictEqual(JSON.stringify(names),JSON.stringify(['HOÀNG SA','TRƯỜNG SA']),'localized labels mismatch');
 assert.strictEqual(calls.layers.length,1,'label layer not added');
 assert.strictEqual(calls.layers[0][0].id,'hpr-vn-archipelago-labels');
 assert(calls.events['style.load'],'style.load reapply handler missing');
