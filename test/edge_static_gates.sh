@@ -33,4 +33,6 @@ grep -Fq 'edge-g6-detail-layout.js' hpr/edge/ui/hpr-config.js
 grep -Fq 'data-hpr-route-from' hpr/edge/ui/edge-g6-detail-layout.js
 grep -Fq 'data-hpr-operator' hpr/edge/ui/edge-g6-detail-layout.js
 grep -Fq 'data-hpr-photo-slot' hpr/edge/ui/edge-g6-detail-layout.js
+grep -Fq '&mdash;' hpr/edge/ui/edge-g6-detail-layout.js
+grep -Fq '&rarr;' hpr/edge/ui/edge-g6-detail-layout.js
 ! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g6-detail-layout.js
