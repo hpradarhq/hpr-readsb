@@ -42,41 +42,10 @@ jobs:
         run: |
           node --check hpr/edge/ui/airwire-adapter.js
           node --check hpr/edge/ui/hpr-config.js
-          node --check hpr/edge/ui/edge-g3-map.js
-          node --check hpr/edge/ui/edge-g4-calm-list.js
-          node --check hpr/edge/ui/edge-g5-detail.js
-          node --check test/edge_browser_smoke.spec.js
-          node --check test/edge_g5_detail.spec.js
+          for f in hpr/edge/ui/edge-g*.js test/edge_*.spec.js; do node --check "$f"; done
 
-      - name: Gate 1 local aircraft rows
-        run: |
-          test -s hpr/edge/ui/edge-g1-list.css
-          grep -Fq 'edge-g1-list.css' hpr/edge/ui/hpr-config.js
-          grep -Fq '#airList .row>.plane-icon{display:none}' hpr/edge/ui/edge-g1-list.css
-          grep -Fq '#airList .row{grid-template-columns:8px 1fr auto}' hpr/edge/ui/edge-g1-list.css
-
-      - name: Gate 3 selected aircraft map policy
-        run: |
-          test -s hpr/edge/ui/edge-g3-map.js
-          grep -Fq 'edge-g3-map.js' hpr/edge/ui/hpr-config.js
-          grep -Fq "layer?.id==='aircraft-halo'" hpr/edge/ui/edge-g3-map.js
-          grep -Fq "layer?.id==='aircraft-symbol'" hpr/edge/ui/edge-g3-map.js
-
-      - name: Gate 4 calm local aircraft list
-        run: |
-          test -s hpr/edge/ui/edge-g4-calm-list.js
-          grep -Fq 'edge-g4-calm-list.js' hpr/edge/ui/hpr-config.js
-          grep -Fq 'const WINDOW_MS=2500' hpr/edge/ui/edge-g4-calm-list.js
-          grep -Fq 'const lastWrites=new WeakMap()' hpr/edge/ui/edge-g4-calm-list.js
-          grep -Fq 'const forceUntils=new WeakMap()' hpr/edge/ui/edge-g4-calm-list.js
-          grep -Fq "this.id!=='airList'" hpr/edge/ui/edge-g4-calm-list.js
-
-      - name: Gate 5 aircraft detail identity
-        run: |
-          test -s hpr/edge/ui/edge-g5-detail.js
-          grep -Fq 'edge-g5-detail.js' hpr/edge/ui/hpr-config.js
-          grep -Fq "0x888000,0x88ffff,'Viet Nam','vn'" hpr/edge/ui/edge-g5-detail.js
-          ! grep -q 'MutationObserver\|setInterval' hpr/edge/ui/edge-g5-detail.js
+      - name: FE static gates
+        run: sh test/edge_static_gates.sh
 
       - name: Chromium interaction regression
         env:
@@ -84,7 +53,7 @@ jobs:
         run: |
           google-chrome --version
           npm install --no-save --ignore-scripts @playwright/test@1.55.0
-          npx playwright test test/edge_browser_smoke.spec.js test/edge_g5_detail.spec.js --reporter=line --workers=1
+          npx playwright test test/edge_*.spec.js --reporter=line --workers=1
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
