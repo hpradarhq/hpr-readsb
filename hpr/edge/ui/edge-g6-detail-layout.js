@@ -1,10 +1,10 @@
 /* G6: deterministic aircraft-detail hierarchy. Data enrichment belongs to G7. */
 (()=>{'use strict';
-const capture=(html,label)=>{const m=html.match(new RegExp(`<span>${label}<\\/span><span>([\\s\\S]*?)<\\/span>`));return m?m[1]:'—'};
+const capture=(html,label)=>{const m=html.match(new RegExp(`<span>${label}<\\/span><span>([\\s\\S]*?)<\\/span>`));return m?m[1]:'&mdash;'};
 function transform(html){
   if(typeof html!=='string'||!html.includes('class="detail-head"')||!html.includes('<span>ICAO</span>')||html.includes('data-hpr-g6="1"'))return html;
   const source=capture(html,'Source'),squawk=capture(html,'Squawk');
-  const insert=`<div class="hpr-detail-status" data-hpr-g6="1"><b>LIVE</b><span>${source}</span><span>SQ ${squawk}</span></div><div class="hpr-detail-route"><small>ROUTE</small><b><span data-hpr-route-from>—</span><i>→</i><span data-hpr-route-to>—</span></b></div><div class="hpr-detail-context"><div><small>Operator</small><b data-hpr-operator>—</b></div><div><small>Airframe</small><b data-hpr-airframe>—</b></div></div><div class="hpr-detail-photo" data-hpr-photo-slot hidden></div>`;
+  const insert=`<div class="hpr-detail-status" data-hpr-g6="1"><b>LIVE</b><span>${source}</span><span>SQ ${squawk}</span></div><div class="hpr-detail-route"><small>ROUTE</small><b><span data-hpr-route-from>&mdash;</span><i>&rarr;</i><span data-hpr-route-to>&mdash;</span></b></div><div class="hpr-detail-context"><div><small>Operator</small><b data-hpr-operator>&mdash;</b></div><div><small>Airframe</small><b data-hpr-airframe>&mdash;</b></div></div><div class="hpr-detail-photo" data-hpr-photo-slot hidden></div>`;
   return html.replace('<div class="metric-grid">',insert+'<div class="metric-grid">');
 }
 function install(){
