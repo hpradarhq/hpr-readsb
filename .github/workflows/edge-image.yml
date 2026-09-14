@@ -43,6 +43,7 @@ jobs:
           node --check hpr/edge/ui/airwire-adapter.js
           node --check hpr/edge/ui/aircraft-renderer.js
           node --check hpr/edge/ui/edge-history.js
+          node --check hpr/edge/ui/edge-ui-patch.js
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
@@ -93,7 +94,7 @@ jobs:
             type=sha,prefix=edge-,format=long
           labels: |
             org.opencontainers.image.title=HPRadar readsb Edge
-            org.opencontainers.image.description=HPR readsb + native binary AirWire + Atlas Edge real trace/replay UI
+            org.opencontainers.image.description=HPR readsb + native AirWire metadata + Atlas Edge real trace/replay UI
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push
