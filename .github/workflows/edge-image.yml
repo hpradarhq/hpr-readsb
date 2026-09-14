@@ -65,6 +65,9 @@ jobs:
       - name: Calm UI + MapLibre expression runtime smoke
         run: node test/edge_calm_ui_runtime_smoke.js
 
+      - name: Detail observer runtime smoke
+        run: node test/edge_detail_cards_runtime_smoke.js
+
       - name: Selected trace runtime smoke
         run: node test/edge_history_runtime_smoke.js
 
