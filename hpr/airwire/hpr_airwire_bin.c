@@ -26,6 +26,13 @@ static void put_u24le(uint8_t *p, uint32_t v) {
     p[2] = (uint8_t) (v >> 16);
 }
 
+static void put_ascii(uint8_t *out, size_t out_len, const char *in) {
+    for (size_t i = 0; i < out_len && in[i]; i++) {
+        unsigned char ch = (unsigned char) in[i];
+        out[i] = (ch >= 0x20 && ch <= 0x7e) ? ch : (uint8_t) '?';
+    }
+}
+
 static int16_t clamp_i16(long long v) {
     if (v < -32768) return -32768;
     if (v > 32767) return 32767;
@@ -69,11 +76,19 @@ bool hpr_airwire_encode_identity(uint8_t out[HPR_AIRWIRE_IDENT_SIZE], const hpr_
     memset(out, 0, HPR_AIRWIRE_IDENT_SIZE);
     out[0] = HPR_AIRWIRE_IDENT_TYPE;
     put_u24le(out + 1, in->icao);
-    for (size_t i = 0; i < 8 && in->callsign[i]; i++) {
-        unsigned char ch = (unsigned char) in->callsign[i];
-        out[4 + i] = (ch >= 0x20 && ch <= 0x7e) ? ch : (uint8_t) '?';
-    }
+    put_ascii(out + 4, 8, in->callsign);
     out[12] = in->category;
     put_u16le(out + 13, in->squawk);
+    return true;
+}
+
+bool hpr_airwire_encode_metadata(uint8_t out[HPR_AIRWIRE_META_SIZE], const hpr_airwire_metadata_t *in) {
+    if (!out || !in || !valid_icao(in->icao)) return false;
+
+    memset(out, 0, HPR_AIRWIRE_META_SIZE);
+    out[0] = HPR_AIRWIRE_META_TYPE;
+    put_u24le(out + 1, in->icao);
+    put_ascii(out + 4, 4, in->type_code);
+    put_ascii(out + 8, 12, in->registration);
     return true;
 }
