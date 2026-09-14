@@ -1,0 +1,3 @@
+/* Gate 1: calm LOCAL AIRCRAFT rows. Visual-only; no JS/event/timer changes. */
+#airList .row{grid-template-columns:8px 1fr auto}
+#airList .row>.plane-icon{display:none}
