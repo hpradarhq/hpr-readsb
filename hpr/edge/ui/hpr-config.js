@@ -9,6 +9,7 @@ window.HPR_CONFIG = {
  * inline Atlas runtime creates the MapLibre instance. */
 document.write('<script src="/edge-ops.js"><\/script>');
 document.write('<script src="/edge-e1e7.js"><\/script>');
+document.write('<script src="/edge-enrich.js"><\/script>');
 if (new URLSearchParams(location.search).get('bench') === '1') {
   document.write('<script src="/edge-benchmark.js"><\/script>');
 }
