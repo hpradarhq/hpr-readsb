@@ -1,105 +1,57 @@
-/* HPRadar Edge persistent administration UI.
- * Configuration is stored by /api/admin in /data/hpr-edge.
- * All mutations require a six-digit PIN. Docker/nginx stay up; station/feeder
- * changes restart only the readsb child process.
- */
+/* Persistent Edge settings. Four compact tabs; all writes require a 6-digit PIN. */
 (()=>{'use strict';
-const $=s=>document.querySelector(s);
-let cfg=null,hookedMap=false;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let cfg=null,hookedMap=false,activeTab='receiver';
+const PRESETS=[
+  {id:'hpradar',name:'HPRadar',host:'skyfeed.hpradar.com',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'adsblol',name:'adsb.lol',host:'in.adsb.lol',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'adsbfi',name:'ADSB.fi',host:'feed.adsb.fi',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'airplaneslive',name:'Airplanes.live',host:'feed.airplanes.live',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'planespotters',name:'Planespotters.net',host:'feed.planespotters.net',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'theairtraffic',name:'TheAirTraffic',host:'feed.theairtraffic.com',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'adsbx',name:'ADS-B Exchange',host:'feed1.adsbexchange.com',port:30004,protocol:'beast_reduce_plus_out'},
+  {id:'flyitaly',name:'Fly Italy ADS-B',host:'dati.flyitalyadsb.com',port:4905,protocol:'beast_reduce_plus_out'},
+  {id:'avdelphi',name:'AVDelphi',host:'data.avdelphi.com',port:24999,protocol:'beast_reduce_plus_out'}
+];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num=(v,fallback=null)=>Number.isFinite(Number(v))?Number(v):fallback;
-function uuid4(){
-  if(globalThis.crypto?.randomUUID)return globalThis.crypto.randomUUID();
-  const b=new Uint8Array(16);globalThis.crypto?.getRandomValues?.(b);
-  if(!b.some(Boolean)){for(let i=0;i<16;i++)b[i]=Math.floor(Math.random()*256)}
-  b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;
-  const h=[...b].map(x=>x.toString(16).padStart(2,'0')).join('');
-  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-}
-async function api(op,payload){
-  const r=await fetch(`/api/admin?op=${encodeURIComponent(op)}`,{method:payload?'POST':'GET',headers:payload?{'Content-Type':'application/json'}:{},body:payload?JSON.stringify(payload):undefined,cache:'no-store'});
-  let j={};try{j=await r.json()}catch(_){j={ok:false,error:`HTTP ${r.status}`}}
-  if(!r.ok||j.ok===false)throw new Error(j.error||`HTTP ${r.status}`);return j;
-}
+const num=v=>Number.isFinite(Number(v))?Number(v):null;
+function uuid4(){if(globalThis.crypto?.randomUUID)return globalThis.crypto.randomUUID();const b=new Uint8Array(16);globalThis.crypto?.getRandomValues?.(b);if(!b.some(Boolean))for(let i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=[...b].map(x=>x.toString(16).padStart(2,'0')).join('');return`${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`}
+async function api(op,payload){const r=await fetch(`/api/admin?op=${encodeURIComponent(op)}`,{method:payload?'POST':'GET',headers:payload?{'Content-Type':'application/json'}:{},body:payload?JSON.stringify(payload):undefined,cache:'no-store'});let j={};try{j=await r.json()}catch(_){j={ok:false,error:`HTTP ${r.status}`}}if(!r.ok||j.ok===false)throw Error(j.error||`HTTP ${r.status}`);return j}
 async function load(){cfg=await api('config');applyPersistentDisplay();return cfg}
-function pin(){const p=$('#hprAdminPin')?.value||'';if(!/^\d{6}$/.test(p))throw new Error('Enter the 6-digit admin PIN');return p}
-function msg(text,good=true){const e=$('#hprAdminMsg');if(!e)return;e.textContent=text;e.className=good?'good':'bad'}
-function field(label,html,note=''){return `<label class="hpr-admin-field"><span>${label}</span>${html}${note?`<small>${note}</small>`:''}</label>`}
+function pin(){const p=$('#hprAdminPin')?.value||'';if(!/^\d{6}$/.test(p))throw Error('Enter the 6-digit admin PIN');return p}
+function msg(t,ok=true){const e=$('#hprAdminMsg');if(e){e.textContent=t;e.className=ok?'good':'bad'}}
+function field(label,html,note=''){return`<label class="hpr-admin-field"><span>${label}</span>${html}${note?`<small>${note}</small>`:''}</label>`}
 function circle(lon,lat,nm,steps=96){const r=6371,km=nm*1.852,d=km/r,p=lat*Math.PI/180,l=lon*Math.PI/180,out=[];for(let i=0;i<=steps;i++){const b=2*Math.PI*i/steps,pp=Math.asin(Math.sin(p)*Math.cos(d)+Math.cos(p)*Math.sin(d)*Math.cos(b)),ll=l+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(p),Math.cos(d)-Math.sin(p)*Math.sin(pp));out.push([ll*180/Math.PI,pp*180/Math.PI])}return out}
-function applyPersistentDisplay(){
-  if(!cfg?.display)return;
-  const el=$('#hprUnits');if(el&&el.value!==cfg.display.units){el.value=cfg.display.units;el.dispatchEvent(new Event('change',{bubbles:true}))}
-  applyRings();
-}
-function applyRings(){
-  const m=window.HPREdgeMap,d=cfg?.display,s=cfg?.station;if(!m?.isStyleLoaded?.()||!d||!s)return;
-  try{
-    const overlayVisible=window.HPREdgeOps?.state?.().rings!==false;
-    if(m.getLayer('hpr-range-rings'))m.setLayoutProperty('hpr-range-rings','visibility','none');
-    const features=[];if(d.ring_enabled&&Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon))){for(let i=1;i<=Number(d.ring_count||0);i++)features.push({type:'Feature',properties:{nm:i*Number(d.ring_step_nm)},geometry:{type:'LineString',coordinates:circle(Number(s.lon),Number(s.lat),i*Number(d.ring_step_nm))}})}
-    const data={type:'FeatureCollection',features};
-    if(!m.getSource('hpr-admin-rings'))m.addSource('hpr-admin-rings',{type:'geojson',data});else m.getSource('hpr-admin-rings').setData(data);
-    if(!m.getLayer('hpr-admin-rings'))m.addLayer({id:'hpr-admin-rings',type:'line',source:'hpr-admin-rings',paint:{'line-color':d.ring_color||'#59ddff','line-width':1,'line-opacity':.45,'line-dasharray':[3,3]}});else m.setPaintProperty('hpr-admin-rings','line-color',d.ring_color||'#59ddff');
-    m.setLayoutProperty('hpr-admin-rings','visibility',d.ring_enabled&&overlayVisible?'visible':'none');
-    if(m.getLayer('hpr-actual-range'))m.setLayoutProperty('hpr-actual-range','visibility',d.actual_range&&overlayVisible?'visible':'none');
-  }catch(_){}
-}
+function applyPersistentDisplay(){if(!cfg?.display)return;const el=$('#hprUnits');if(el&&el.value!==cfg.display.units){el.value=cfg.display.units;el.dispatchEvent(new Event('change',{bubbles:true}))}applyRings()}
+function applyRings(){const m=window.HPREdgeMap,d=cfg?.display,s=cfg?.station;if(!m?.isStyleLoaded?.()||!d||!s)return;try{const visible=window.HPREdgeOps?.state?.().rings!==false;if(m.getLayer('hpr-range-rings'))m.setLayoutProperty('hpr-range-rings','visibility','none');const features=[];if(d.ring_enabled&&num(s.lat)!=null&&num(s.lon)!=null)for(let i=1;i<=Number(d.ring_count||0);i++)features.push({type:'Feature',properties:{nm:i*Number(d.ring_step_nm)},geometry:{type:'LineString',coordinates:circle(Number(s.lon),Number(s.lat),i*Number(d.ring_step_nm))}});const data={type:'FeatureCollection',features};if(!m.getSource('hpr-admin-rings'))m.addSource('hpr-admin-rings',{type:'geojson',data});else m.getSource('hpr-admin-rings').setData(data);if(!m.getLayer('hpr-admin-rings'))m.addLayer({id:'hpr-admin-rings',type:'line',source:'hpr-admin-rings',paint:{'line-color':d.ring_color||'#59ddff','line-width':1,'line-opacity':.45,'line-dasharray':[3,3]}});else m.setPaintProperty('hpr-admin-rings','line-color',d.ring_color||'#59ddff');m.setLayoutProperty('hpr-admin-rings','visibility',d.ring_enabled&&visible?'visible':'none');if(m.getLayer('hpr-actual-range'))m.setLayoutProperty('hpr-actual-range','visibility',d.actual_range&&visible?'visible':'none')}catch(_){}}
 function hookMap(){const m=window.HPREdgeMap;if(!m)return false;if(hookedMap)return true;hookedMap=true;m.on?.('style.load',()=>setTimeout(applyRings,120));applyRings();return true}
-function waitMap(){if(hookMap())return;setTimeout(waitMap,200)}
-function feederRows(){
-  const rows=(cfg?.feeders||[]);if(!rows.length)return '<div class="tool-note">No outbound feeders configured.</div>';
-  return `<div class="hpr-feeders">${rows.map(f=>`<div class="hpr-feeder" data-id="${esc(f.id)}"><div><b>${esc(f.name||f.id)}</b><small>${esc(f.host)}:${Number(f.port)} · ${esc(f.protocol)}</small></div><label class="switch" title="Enable feeder"><input type="checkbox" data-feed-toggle ${f.enabled?'checked':''}><span class="switch-track"></span></label><button data-feed-edit>Edit</button><button data-feed-delete>×</button></div>`).join('')}</div>`;
-}
-function renderSettings(){
-  const body=$('#detailBody');if(!body||body.querySelector('#hprPersistentSettings'))return;
-  const title=body.querySelector('.panel-head b')?.textContent.trim();if(title!=='Settings')return;
-  if(!cfg){load().then(renderSettings).catch(e=>{const n=document.createElement('div');n.id='hprPersistentSettings';n.className='section';n.innerHTML=`<h3>Persistent settings</h3><div class="tool-note">${esc(e.message)}</div>`;body.appendChild(n)});return}
-  const s=cfg.station||{},d=cfg.display||{};
-  const root=document.createElement('div');root.id='hprPersistentSettings';root.innerHTML=`
-    <div class="section"><h3>Receiver identity & position</h3><div class="hpr-admin-grid">
-      ${field('Name',`<input id="hprSetName" value="${esc(s.name||'')}">`)}
-      ${field('Latitude',`<input id="hprSetLat" inputmode="decimal" value="${s.lat??''}">`)}
-      ${field('Longitude',`<input id="hprSetLon" inputmode="decimal" value="${s.lon??''}">`)}
-      ${field('Height ASL (m)',`<input id="hprSetHeight" inputmode="decimal" value="${s.height_m??''}">`)}
-      ${field('Station UUID',`<div class="hpr-inline"><input id="hprSetUuid" value="${esc(s.uuid||'')}"><button id="hprGenUuid">Generate</button></div>`,'Generated locally in this browser')}
-      ${field('Units',`<select id="hprSetUnits"><option value="nautical" ${d.units==='nautical'?'selected':''}>Aviation · ft / kt / NM</option><option value="metric" ${d.units==='metric'?'selected':''}>Metric · m / km/h / km</option></select>`)}
-    </div></div>
-    <div class="section"><h3>Coverage display</h3><div class="hpr-admin-grid">
-      ${field('Range rings',`<label class="switch hpr-switchline"><input id="hprRingEnabled" type="checkbox" ${d.ring_enabled?'checked':''}><span class="switch-track"></span></label>`)}
-      ${field('Number of rings',`<input id="hprRingCount" type="number" min="0" max="8" step="1" value="${Number(d.ring_count??4)}">`)}
-      ${field('Ring spacing (NM)',`<input id="hprRingStep" type="number" min="5" max="200" step="5" value="${Number(d.ring_step_nm??50)}">`)}
-      ${field('Ring color',`<input id="hprRingColor" type="color" value="${esc(d.ring_color||'#59ddff')}">`)}
-      ${field('Actual range outline',`<label class="switch hpr-switchline"><input id="hprActualRange" type="checkbox" ${d.actual_range?'checked':''}><span class="switch-track"></span></label>`,'readsb 24h outline')}
-    </div></div>
-    <div class="section"><h3>Outbound feeders</h3>${feederRows()}<div class="hpr-admin-grid hpr-feed-form">
-      <input id="hprFeedId" type="hidden">
-      ${field('Name',`<input id="hprFeedName" placeholder="adsb.lol">`)}
-      ${field('Host',`<input id="hprFeedHost" placeholder="in.example.net">`)}
-      ${field('Port',`<input id="hprFeedPort" type="number" min="1" max="65535" value="30004">`)}
-      ${field('Protocol',`<select id="hprFeedProto"><option>beast_reduce_plus_out</option><option>beast_reduce_out</option><option>beast_out</option><option>raw_out</option><option>sbs_out</option><option>json_out</option></select>`)}
-      ${field('Feeder UUID',`<div class="hpr-inline"><input id="hprFeedUuid"><button id="hprUseStationUuid">Station UUID</button></div>`,'Optional; useful with beast_reduce_plus_out')}
-    </div><button class="tool-action hpr-wide" id="hprSaveFeeder">Add / update feeder</button></div>
-    <div class="section"><h3>Confirm changes</h3>${field('Admin PIN',`<input id="hprAdminPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="6 digits">`,'Required for every persistent change')}<div class="tool-actions"><button class="tool-action" id="hprSaveAll">Save station & display</button><button class="tool-action" id="hprReloadAdmin">Reload</button></div><div id="hprAdminMsg" class="hpr-admin-msg"></div></div>
-    <div class="section"><h3>Change PIN</h3><div class="hpr-inline"><input id="hprNewPin" type="password" inputmode="numeric" maxlength="6" placeholder="New 6-digit PIN"><button id="hprChangePin">Change PIN</button></div></div>`;
-  body.appendChild(root);bind(root)
-}
-function stationPayload(p){const lat=$('#hprSetLat').value.trim(),lon=$('#hprSetLon').value.trim(),height=$('#hprSetHeight').value.trim();return {pin:p,name:$('#hprSetName').value.trim(),lat:lat===''?null:num(lat),lon:lon===''?null:num(lon),height_m:height===''?null:num(height),uuid:$('#hprSetUuid').value.trim()}}
-function displayPayload(p){return {pin:p,units:$('#hprSetUnits').value,ring_enabled:$('#hprRingEnabled').checked,ring_count:Number($('#hprRingCount').value),ring_step_nm:Number($('#hprRingStep').value),ring_color:$('#hprRingColor').value,actual_range:$('#hprActualRange').checked}}
-function feederPayload(p,enabled=true){const id=$('#hprFeedId').value||`f_${uuid4().slice(0,8)}`;return {pin:p,id,name:$('#hprFeedName').value.trim(),host:$('#hprFeedHost').value.trim(),port:Number($('#hprFeedPort').value),protocol:$('#hprFeedProto').value,enabled,uuid:$('#hprFeedUuid').value.trim()}}
-async function refreshUi(){await load();const old=$('#hprPersistentSettings');old?.remove();renderSettings();hookMap()}
+function waitMap(){if(!hookMap())setTimeout(waitMap,200)}
+function feederRows(){const rows=cfg?.feeders||[];if(!rows.length)return'<div class="hpr-empty-feed">No external feeds enabled.</div>';return`<div class="hpr-feeders">${rows.map(f=>`<div class="hpr-feeder" data-id="${esc(f.id)}"><div><b>${esc(f.name||f.id)}</b><small>${esc(f.host)}:${Number(f.port)}</small></div><label class="switch"><input type="checkbox" data-feed-toggle ${f.enabled?'checked':''}><span class="switch-track"></span></label><button data-feed-delete aria-label="Delete">×</button></div>`).join('')}</div>`}
+function tabs(){return`<div class="hpr-admin-tabs">${[['receiver','Receiver'],['display','Display'],['feeds','Feeds'],['security','Security']].map(([k,n])=>`<button data-admin-tab="${k}" class="${activeTab===k?'on':''}">${n}</button>`).join('')}</div>`}
+function receiverPanel(){const s=cfg?.station||{};return`<div class="hpr-admin-panel" data-panel="receiver">${field('Name',`<input id="hprSetName" value="${esc(s.name||'')}">`)}<div class="hpr-two">${field('Latitude',`<input id="hprSetLat" inputmode="decimal" value="${s.lat??''}">`)}${field('Longitude',`<input id="hprSetLon" inputmode="decimal" value="${s.lon??''}">`)}</div>${field('Height ASL (m)',`<input id="hprSetHeight" inputmode="decimal" value="${s.height_m??''}">`)}${field('Station UUID',`<div class="hpr-inline"><input id="hprSetUuid" value="${esc(s.uuid||'')}"><button id="hprGenUuid">Generate</button></div>`,'Generated locally')}<button class="tool-action hpr-wide" id="hprSaveReceiver">Save receiver</button></div>`}
+function displayPanel(){const d=cfg?.display||{};return`<div class="hpr-admin-panel" data-panel="display">${field('Units',`<select id="hprSetUnits"><option value="nautical" ${d.units==='nautical'?'selected':''}>Aviation · ft / kt / NM</option><option value="metric" ${d.units==='metric'?'selected':''}>Metric · m / km/h / km</option></select>`)}<div class="hpr-two">${field('Range rings',`<label class="switch hpr-switchline"><input id="hprRingEnabled" type="checkbox" ${d.ring_enabled?'checked':''}><span class="switch-track"></span></label>`)}${field('Actual range',`<label class="switch hpr-switchline"><input id="hprActualRange" type="checkbox" ${d.actual_range?'checked':''}><span class="switch-track"></span></label>`)}</div><div class="hpr-two">${field('Rings',`<input id="hprRingCount" type="number" min="0" max="8" value="${Number(d.ring_count??4)}">`)}${field('Spacing NM',`<input id="hprRingStep" type="number" min="5" max="200" step="5" value="${Number(d.ring_step_nm??50)}">`)}</div>${field('Ring color',`<input id="hprRingColor" type="color" value="${esc(d.ring_color||'#59ddff')}">`)}<button class="tool-action hpr-wide" id="hprSaveDisplay">Save display</button></div>`}
+function feedsPanel(){const opts=PRESETS.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');return`<div class="hpr-admin-panel" data-panel="feeds">${feederRows()}${field('Add feed',`<select id="hprFeedPreset">${opts}<option value="custom">Custom aggregator…</option></select>`)}<div id="hprCustomFeed" hidden><div class="hpr-two">${field('Name',`<input id="hprFeedName" placeholder="New aggregator">`)}${field('Host',`<input id="hprFeedHost" placeholder="feed.example.net">`)}</div><div class="hpr-two">${field('Port',`<input id="hprFeedPort" type="number" min="1" max="65535" value="30004">`)}${field('Protocol',`<select id="hprFeedProto"><option>beast_reduce_plus_out</option><option>beast_reduce_out</option><option>beast_out</option><option>raw_out</option><option>sbs_out</option><option>json_out</option></select>`)}</div></div>${field('Feeder UUID',`<div class="hpr-inline"><input id="hprFeedUuid" placeholder="optional"><button id="hprUseStationUuid">Use station UUID</button></div>`)}<button class="tool-action hpr-wide" id="hprAddFeed">Add feed</button><small class="hpr-source-note">Curated community feeds; HPRadar is first choice.</small></div>`}
+function securityPanel(){return`<div class="hpr-admin-panel" data-panel="security">${field('New PIN',`<input id="hprNewPin" type="password" inputmode="numeric" maxlength="6" placeholder="6 digits">`)}<button class="tool-action hpr-wide" id="hprChangePin">Change PIN</button></div>`}
+function renderSettings(){const body=$('#detailBody');if(!body||body.querySelector('#hprPersistentSettings'))return;const title=body.querySelector('.panel-head b')?.textContent.trim();if(title!=='Settings')return;if(!cfg){load().then(renderSettings).catch(()=>{});return}const root=document.createElement('div');root.id='hprPersistentSettings';root.innerHTML=`<div class="section hpr-admin-shell"><h3>Edge configuration</h3>${tabs()}${receiverPanel()}${displayPanel()}${feedsPanel()}${securityPanel()}<div class="hpr-pinbar"><input id="hprAdminPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Admin PIN · 6 digits"><span id="hprAdminMsg"></span></div></div>`;body.appendChild(root);bind(root);showTab(activeTab)}
+function showTab(k){activeTab=k;$$('[data-admin-tab]').forEach(b=>b.classList.toggle('on',b.dataset.adminTab===k));$$('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==k)}
+function stationPayload(p){const lat=$('#hprSetLat').value.trim(),lon=$('#hprSetLon').value.trim(),h=$('#hprSetHeight').value.trim();return{pin:p,name:$('#hprSetName').value.trim(),lat:lat===''?null:num(lat),lon:lon===''?null:num(lon),height_m:h===''?null:num(h),uuid:$('#hprSetUuid').value.trim()}}
+function displayPayload(p){return{pin:p,units:$('#hprSetUnits').value,ring_enabled:$('#hprRingEnabled').checked,ring_count:Number($('#hprRingCount').value),ring_step_nm:Number($('#hprRingStep').value),ring_color:$('#hprRingColor').value,actual_range:$('#hprActualRange').checked}}
+function presetPayload(p){const id=$('#hprFeedPreset').value,uuid=$('#hprFeedUuid').value.trim();if(id==='custom')return{pin:p,id:`custom_${uuid4().slice(0,8)}`,name:$('#hprFeedName').value.trim(),host:$('#hprFeedHost').value.trim(),port:Number($('#hprFeedPort').value),protocol:$('#hprFeedProto').value,enabled:true,uuid};const x=PRESETS.find(v=>v.id===id);return{pin:p,...x,enabled:true,uuid}}
+async function refreshUi(){await load();$('#hprPersistentSettings')?.remove();renderSettings()}
 function bind(root){
-  $('#hprGenUuid').onclick=()=>{$('#hprSetUuid').value=uuid4()};
-  $('#hprUseStationUuid').onclick=()=>{$('#hprFeedUuid').value=$('#hprSetUuid').value.trim()};
-  $('#hprReloadAdmin').onclick=()=>refreshUi().catch(e=>msg(e.message,false));
-  $('#hprSaveAll').onclick=async()=>{try{const p=pin();await api('station',stationPayload(p));await api('display',displayPayload(p));msg('Saved. readsb child is reloading; Docker/UI stay online.');setTimeout(()=>refreshUi().catch(()=>{}),1300)}catch(e){msg(e.message,false)}};
-  $('#hprSaveFeeder').onclick=async()=>{try{const p=pin(),f=feederPayload(p,true);await api('feeder_upsert',f);msg('Feeder saved. readsb child is reloading.');setTimeout(()=>refreshUi().catch(()=>{}),1300)}catch(e){msg(e.message,false)}};
-  root.querySelectorAll('[data-feed-toggle]').forEach(input=>input.onchange=async()=>{try{const p=pin(),row=input.closest('.hpr-feeder'),f=(cfg.feeders||[]).find(x=>x.id===row.dataset.id);await api('feeder_upsert',{...f,pin:p,enabled:input.checked});msg(`${f.name||f.id} ${input.checked?'enabled':'disabled'}.`);setTimeout(()=>refreshUi().catch(()=>{}),1300)}catch(e){input.checked=!input.checked;msg(e.message,false)}});
-  root.querySelectorAll('[data-feed-delete]').forEach(b=>b.onclick=async()=>{try{const p=pin(),id=b.closest('.hpr-feeder').dataset.id;await api('feeder_delete',{pin:p,id});msg('Feeder deleted.');setTimeout(()=>refreshUi().catch(()=>{}),1300)}catch(e){msg(e.message,false)}});
-  root.querySelectorAll('[data-feed-edit]').forEach(b=>b.onclick=()=>{const id=b.closest('.hpr-feeder').dataset.id,f=(cfg.feeders||[]).find(x=>x.id===id);if(!f)return;$('#hprFeedId').value=f.id;$('#hprFeedName').value=f.name||'';$('#hprFeedHost').value=f.host||'';$('#hprFeedPort').value=f.port||30004;$('#hprFeedProto').value=f.protocol||'beast_reduce_plus_out';$('#hprFeedUuid').value=f.uuid||''});
-  $('#hprChangePin').onclick=async()=>{try{const p=pin(),np=$('#hprNewPin').value.trim();if(!/^\d{6}$/.test(np))throw new Error('New PIN must be exactly 6 digits');await api('pin',{pin:p,new_pin:np});$('#hprAdminPin').value=np;$('#hprNewPin').value='';msg('PIN changed.')}catch(e){msg(e.message,false)}}
+  $$('[data-admin-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.adminTab));
+  $('#hprGenUuid').onclick=()=>$('#hprSetUuid').value=uuid4();
+  $('#hprUseStationUuid').onclick=()=>$('#hprFeedUuid').value=$('#hprSetUuid')?.value.trim()||cfg?.station?.uuid||'';
+  $('#hprFeedPreset').onchange=e=>$('#hprCustomFeed').hidden=e.target.value!=='custom';
+  $('#hprSaveReceiver').onclick=async()=>{try{await api('station',stationPayload(pin()));msg('Receiver saved · readsb reloading');setTimeout(refreshUi,1000)}catch(e){msg(e.message,false)}};
+  $('#hprSaveDisplay').onclick=async()=>{try{await api('display',displayPayload(pin()));msg('Display saved');await load();applyRings()}catch(e){msg(e.message,false)}};
+  $('#hprAddFeed').onclick=async()=>{try{await api('feeder_upsert',presetPayload(pin()));msg('Feed added · readsb reloading');setTimeout(refreshUi,1000)}catch(e){msg(e.message,false)}};
+  root.querySelectorAll('[data-feed-toggle]').forEach(i=>i.onchange=async()=>{try{const f=(cfg.feeders||[]).find(x=>x.id===i.closest('.hpr-feeder').dataset.id);await api('feeder_upsert',{...f,pin:pin(),enabled:i.checked});msg(`${f.name||f.id} ${i.checked?'enabled':'disabled'}`);setTimeout(refreshUi,900)}catch(e){i.checked=!i.checked;msg(e.message,false)}});
+  root.querySelectorAll('[data-feed-delete]').forEach(b=>b.onclick=async()=>{try{await api('feeder_delete',{pin:pin(),id:b.closest('.hpr-feeder').dataset.id});msg('Feed removed');setTimeout(refreshUi,900)}catch(e){msg(e.message,false)}});
+  $('#hprChangePin').onclick=async()=>{try{const np=$('#hprNewPin').value.trim();if(!/^\d{6}$/.test(np))throw Error('New PIN must be exactly 6 digits');await api('pin',{pin:pin(),new_pin:np});$('#hprAdminPin').value=np;$('#hprNewPin').value='';msg('PIN changed')}catch(e){msg(e.message,false)}}
 }
-function style(){if($('#hprAdminStyle'))return;const s=document.createElement('style');s.id='hprAdminStyle';s.textContent=`.hpr-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hpr-admin-field>span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}.hpr-admin-field input,.hpr-admin-field select{width:100%;height:31px;border:1px solid var(--border);border-radius:5px;background:var(--s2);color:var(--text);padding:0 7px;font:11px system-ui}.hpr-admin-field small{display:block;color:var(--muted);font-size:8px;margin-top:2px}.hpr-inline{display:flex;gap:5px}.hpr-inline input{min-width:0;flex:1}.hpr-inline button,.hpr-feeder button{border:1px solid var(--border);border-radius:5px;background:var(--s2);color:var(--text2);font-size:9px;padding:0 7px}.hpr-switchline{height:31px;display:flex;align-items:center}.hpr-feeders{margin-bottom:8px}.hpr-feeder{min-height:42px;display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center;border-bottom:1px solid var(--border)}.hpr-feeder small{display:block;color:var(--muted);font-size:8px}.hpr-feeder>button{height:27px}.hpr-wide{width:100%;margin-top:8px}.hpr-admin-msg{min-height:18px;margin-top:7px;font-size:9px}.hpr-admin-msg.good{color:var(--live)}.hpr-admin-msg.bad{color:var(--danger)}@media(max-width:680px){.hpr-admin-grid{grid-template-columns:1fr}}`;document.head.appendChild(s)}
+function style(){if($('#hprAdminStyle'))return;const s=document.createElement('style');s.id='hprAdminStyle';s.textContent=`.hpr-admin-shell{padding-top:10px}.hpr-admin-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:12px}.hpr-admin-tabs button{height:30px;border:1px solid var(--border);border-radius:5px;background:var(--s2);color:var(--text2);font:9px system-ui}.hpr-admin-tabs button.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--s2))}.hpr-admin-panel{display:grid;gap:9px}.hpr-admin-panel[hidden]{display:none}.hpr-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hpr-admin-field>span{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.45px;margin-bottom:3px}.hpr-admin-field input,.hpr-admin-field select{width:100%;height:32px;border:1px solid var(--border);border-radius:5px;background:var(--s2);color:var(--text);padding:0 7px;font:11px system-ui}.hpr-admin-field small,.hpr-source-note{display:block;color:var(--muted);font-size:8px}.hpr-inline{display:flex;gap:5px}.hpr-inline input{min-width:0;flex:1}.hpr-inline button,.hpr-feeder button{border:1px solid var(--border);border-radius:5px;background:var(--s2);color:var(--text2);font-size:8px;padding:0 7px}.hpr-switchline{height:32px;display:flex;align-items:center}.hpr-wide{width:100%}.hpr-feeders{border:1px solid var(--border);border-radius:6px;overflow:hidden}.hpr-feeder{min-height:42px;padding:0 7px;display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;border-bottom:1px solid var(--border)}.hpr-feeder:last-child{border-bottom:0}.hpr-feeder small{display:block;color:var(--muted);font-size:8px}.hpr-feeder>button{height:26px}.hpr-empty-feed{padding:12px;border:1px dashed var(--border);border-radius:6px;color:var(--muted);text-align:center;font-size:9px}.hpr-pinbar{position:sticky;bottom:0;display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center;margin:12px -12px -12px;padding:8px 12px;background:var(--surface);border-top:1px solid var(--border)}.hpr-pinbar input{height:31px;border:1px solid var(--border);border-radius:5px;background:var(--s2);color:var(--text);padding:0 7px}.hpr-pinbar span{font-size:9px;color:var(--muted)}.hpr-pinbar span.good{color:var(--live)}.hpr-pinbar span.bad{color:var(--danger)}@media(max-width:680px){.hpr-two{grid-template-columns:1fr}.hpr-admin-tabs{grid-template-columns:1fr 1fr}}`;document.head.appendChild(s)}
 function observe(){const body=$('#detailBody');if(body)new MutationObserver(()=>queueMicrotask(renderSettings)).observe(body,{childList:true,subtree:false})}
-document.addEventListener('DOMContentLoaded',()=>{style();observe();waitMap();load().then(renderSettings).catch(()=>{})},{once:true});
-window.HPREdgeAdmin=Object.freeze({config:()=>cfg,reload:load,applyRings,uuid4});
+document.addEventListener('DOMContentLoaded',()=>{style();observe();load().then(()=>{waitMap();renderSettings()}).catch(()=>{})},{once:true});
+window.HPREdgeAdmin=Object.freeze({config:()=>cfg,reload:load,applyRings,uuid4,presets:()=>PRESETS.slice()});
 })();
