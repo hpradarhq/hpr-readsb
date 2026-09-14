@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const code=fs.readFileSync('hpr/edge/ui/edge-traffic-enrich.js','utf8');
+const window={HPR_CONFIG:{trafficApi:'https://traffic.hpradar.com'}};
+const document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[]};
+const context={window,document,console,Object,Array,Map,JSON,Date,fetch:async()=>({ok:false}),queueMicrotask:()=>{},MutationObserver:function(){},encodeURIComponent};
+vm.createContext(context);vm.runInContext(code,context,{filename:'edge-traffic-enrich.js'});
+assert(window.HPREdgeTraffic,'traffic enrichment export missing');
+assert.strictEqual(window.HPREdgeTraffic.base,'https://traffic.hpradar.com');
+const ac=window.HPREdgeTraffic.unwrapAircraft({response:{aircraft:{mode_s:'888123',manufacturer:'Airbus'}}});
+assert.strictEqual(ac.mode_s,'888123');assert.strictEqual(ac.manufacturer,'Airbus');
+const rt=window.HPREdgeTraffic.unwrapRoute({response:{flightroute:{callsign:'VJC123'}}});
+assert.strictEqual(rt.callsign,'VJC123');
+console.log('edge traffic enrichment runtime smoke PASS');
