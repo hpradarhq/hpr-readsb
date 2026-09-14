@@ -29,7 +29,7 @@ checks = {
                    and has('hpr/edge/ui/edge-e1e7.js', 'Tracked', 'edgeCapacity'),
     'mobile': has('hpr/edge/ui/index.html', '@media(max-width:680px)', 'compositionMode')
               and has('hpr/edge/ui/edge-history.js', '@media(max-width:680px)'),
-    'deployment': has('docker/edge.Dockerfile', '4.8.0-edge.1', 'readsb', 'nginx', 'hpr-edge')
+    'deployment': has('docker/edge.Dockerfile', 'ARG FE_VERSION=', 'readsb', 'nginx', 'hpr-edge')
                   and has('deploy/compose.pi.yml', 'hpr-readsb-edge'),
     'e7_benchmark': has('hpr/edge/ui/edge-benchmark.js', 'E7 BENCHMARK', 'find_aircraft', 'coverage')
                     and has('test/e7_compare.py', 'COMPOSITE', 'target >=130'),
