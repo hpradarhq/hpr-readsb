@@ -65,6 +65,8 @@ jobs:
           test -s hpr/edge/ui/edge-g4-calm-list.js
           grep -Fq 'edge-g4-calm-list.js' hpr/edge/ui/hpr-config.js
           grep -Fq 'const WINDOW_MS=2500' hpr/edge/ui/edge-g4-calm-list.js
+          grep -Fq 'const lastWrites=new WeakMap()' hpr/edge/ui/edge-g4-calm-list.js
+          grep -Fq 'const forceUntils=new WeakMap()' hpr/edge/ui/edge-g4-calm-list.js
           grep -Fq "this.id!=='airList'" hpr/edge/ui/edge-g4-calm-list.js
 
       - name: Chromium interaction regression
