@@ -1,7 +1,7 @@
 /* HPRadar Edge local map-label policy.
  * Scope: labels only. Does not alter boundary geometry or source tiles.
  * Vietnamese profile suppresses PRC administrative labels for the disputed
- * archipelagos and renders HPR-owned Vietnamese place labels.
+ * archipelagos and renders HPR-controlled Vietnamese place labels.
  */
 (()=>{'use strict';
 const SOURCE_ID='hpr-vn-archipelago-labels';
