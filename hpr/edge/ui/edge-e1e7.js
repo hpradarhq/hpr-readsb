@@ -25,6 +25,7 @@ function isMilitary(a){
   return /^(F1[4568]|F2[235]|F35|SU\d|MIG\d|C1(30|7)|KC\d|RQ\d|MQ\d|AH\d|UH\d|CH\d)/.test(t);
 }
 function extraMatch(a){
+  if(!quick.size&&!countryFilter&&!squawkFilter)return true;
   if(!a)return false;
   if(quick.has('emergency')&&!isEmergency(a))return false;
   if(quick.has('rotor')&&!isRotor(a))return false;
@@ -47,8 +48,8 @@ function refreshCountries(){
   const old=countryFilter,seen=new Map();
   for(const a of airMap.values()){const c=countryOf(a.id);if(c)seen.set(c.code,c)}
   const rows=[...seen.values()].sort((a,b)=>a.name.localeCompare(b.name));
-  const html=['<option value="">All countries</option>',...rows.map(c=>`<option value="${c.code}">${c.flag} ${c.name}</option>`)].join('');
-  if(sel.dataset.signature!==html){sel.innerHTML=html;sel.dataset.signature=html;sel.value=old}
+  const sig=rows.map(c=>c.code).join(','),html=['<option value="">All countries</option>',...rows.map(c=>`<option value="${c.code}">${c.flag} ${c.name}</option>`)].join('');
+  if(sel.dataset.signature!==sig){sel.innerHTML=html;sel.dataset.signature=sig;sel.value=old}
 }
 function replaceQuickBar(){
   const bar=$('#hprOpsBar .hpr-presets');if(!bar||bar.dataset.e2)return;
@@ -132,9 +133,11 @@ function renderHealth(){
   const body=$('#detailBody');if(!body||icaoFromDetail())return;
   if(![...body.querySelectorAll('h3')].some(x=>x.textContent.trim()==='Capabilities'))return;
   let box=$('#hprE5Health');if(!box){box=document.createElement('div');box.id='hprE5Health';box.className='hpr-e5-health';const metric=body.querySelector('.metric-grid');metric?.after(box)}
-  const s=window.HPRAirWire?.stats?.()||{},ratio=Math.min(1,(Number(s.aircraft)||lastAircraftCount)/CAPACITY),connected=!!s.connected;
+  if(!box)return;
+  const s=window.HPRAirWire?.stats?.()||{},tracked=Number(s.aircraft)||lastAircraftCount,ratio=Math.min(1,tracked/CAPACITY),connected=!!s.connected;
   const level=!connected?'OFFLINE':ratio>.9?'HIGH LOAD':'GOOD',klass=!connected?'bad':ratio>.9?'warn':'good';
-  box.innerHTML=`<div><small>EDGE HEALTH</small><b class="${klass}">${level}</b></div><div><small>Tracked</small><b>${Number(s.aircraft)||lastAircraftCount} / ${CAPACITY}</b></div><div><small>AirWire</small><b>${connected?'CONNECTED':'OFFLINE'}</b></div><div><small>Frames</small><b>${Number(s.frames||0).toLocaleString()}</b></div>`;
+  const sig=[level,tracked,connected?1:0,Number(s.frames||0)].join(':');if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+  box.innerHTML=`<div><small>EDGE HEALTH</small><b class="${klass}">${level}</b></div><div><small>Tracked</small><b>${tracked} / ${CAPACITY}</b></div><div><small>AirWire</small><b>${connected?'CONNECTED':'OFFLINE'}</b></div><div><small>Frames</small><b>${Number(s.frames||0).toLocaleString()}</b></div>`;
 }
 function installStyle(){
   if($('#hprE1E7Style'))return;const st=document.createElement('style');st.id='hprE1E7Style';st.textContent=`
