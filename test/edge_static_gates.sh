@@ -36,3 +36,15 @@ grep -Fq 'data-hpr-photo-slot' hpr/edge/ui/edge-g6-detail-layout.js
 grep -Fq '&mdash;' hpr/edge/ui/edge-g6-detail-layout.js
 grep -Fq '&rarr;' hpr/edge/ui/edge-g6-detail-layout.js
 ! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g6-detail-layout.js
+
+# G7 selected-only enrichment
+test -s hpr/edge/ui/edge-g7-enrich.js
+grep -Fq 'edge-g7-enrich.js' hpr/edge/ui/hpr-config.js
+grep -Fq "trafficApi: '/api/traffic'" hpr/edge/ui/hpr-config.js
+grep -Fq "photoApi: '/api/photo/hex'" hpr/edge/ui/hpr-config.js
+grep -Fq 'const cache=new Map(),inflight=new Map()' hpr/edge/ui/edge-g7-enrich.js
+grep -Fq 'data-hpr-photo-slot' hpr/edge/ui/edge-g7-enrich.js
+! grep -q 'MutationObserver\|setInterval' hpr/edge/ui/edge-g7-enrich.js
+grep -Fq 'location /api/traffic/' hpr/edge/nginx.conf
+grep -Fq 'proxy_pass https://traffic.hpradar.com/' hpr/edge/nginx.conf
+grep -Fq 'location /api/photo/hex/' hpr/edge/nginx.conf
