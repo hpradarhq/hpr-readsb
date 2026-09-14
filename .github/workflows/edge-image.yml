@@ -48,11 +48,15 @@ jobs:
           node --check hpr/edge/ui/edge-ops.js
           node --check hpr/edge/ui/edge-e1e7.js
           node --check hpr/edge/ui/edge-enrich.js
+          node --check hpr/edge/ui/edge-map-policy.js
           node --check hpr/edge/ui/edge-benchmark.js
           node --check tools/e7-manual-capture.js
 
       - name: AirWire adapter runtime smoke
         run: node test/airwire_adapter_runtime_smoke.js
+
+      - name: Map label policy runtime smoke
+        run: node test/edge_map_policy_runtime_smoke.js
 
       - name: Edge capability contract
         run: python3 test/edge_feature_score.py
