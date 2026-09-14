@@ -18,7 +18,7 @@
 #define HPR_WS_SCAN_MS 250
 #define HPR_WS_REFRESH_MS 15000
 #define HPR_WS_STALE_MS 120000
-#define HPR_WS_PAYLOAD_MAX (HPR_WS_CACHE_MAX * (HPR_AIRWIRE_POS_SIZE + HPR_AIRWIRE_IDENT_SIZE))
+#define HPR_WS_PAYLOAD_MAX (HPR_WS_CACHE_MAX * (HPR_AIRWIRE_POS_SIZE + HPR_AIRWIRE_IDENT_SIZE + HPR_AIRWIRE_META_SIZE))
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -38,6 +38,7 @@ typedef struct {
     uint32_t icao;
     uint8_t pos[HPR_AIRWIRE_POS_SIZE];
     uint8_t ident[HPR_AIRWIRE_IDENT_SIZE];
+    uint8_t meta[HPR_AIRWIRE_META_SIZE];
     int have_pos;
     double lat;
     double lon;
@@ -49,8 +50,10 @@ typedef struct {
     uint32_t icao;
     uint8_t pos[HPR_AIRWIRE_POS_SIZE];
     uint8_t ident[HPR_AIRWIRE_IDENT_SIZE];
+    uint8_t meta[HPR_AIRWIRE_META_SIZE];
     int pos_changed;
     int ident_changed;
+    int meta_changed;
     int have_pos;
     double lat;
     double lon;
@@ -221,6 +224,13 @@ static void client_close(hpr_ws_client_t *c) {
     memset(c, 0, sizeof(*c)); c->fd = -1;
 }
 
+static int append_frame(uint8_t *out, size_t *used, const uint8_t *frame, size_t frame_len) {
+    if (*used + frame_len > HPR_WS_PAYLOAD_MAX) return -1;
+    memcpy(out + *used, frame, frame_len);
+    *used += frame_len;
+    return 0;
+}
+
 static int send_snapshot(hpr_ws_client_t *c) {
     uint8_t *out = malloc(HPR_WS_PAYLOAD_MAX);
     if (!out) return -1;
@@ -229,13 +239,10 @@ static int send_snapshot(hpr_ws_client_t *c) {
     for (size_t i = 0; i < hpr_cache_len; i++) {
         hpr_ws_cache_t *x = &hpr_cache[i];
         if (!bbox_match(c, x->have_pos, x->lat, x->lon)) continue;
-        if (x->have_pos && used + HPR_AIRWIRE_POS_SIZE <= HPR_WS_PAYLOAD_MAX) {
-            memcpy(out + used, x->pos, HPR_AIRWIRE_POS_SIZE); used += HPR_AIRWIRE_POS_SIZE;
-        }
-        if (used + HPR_AIRWIRE_IDENT_SIZE <= HPR_WS_PAYLOAD_MAX) {
-            memcpy(out + used, x->ident, HPR_AIRWIRE_IDENT_SIZE); used += HPR_AIRWIRE_IDENT_SIZE;
-            client_mark_known(c, x->icao);
-        }
+        if (x->have_pos && append_frame(out, &used, x->pos, HPR_AIRWIRE_POS_SIZE) < 0) break;
+        if (append_frame(out, &used, x->ident, HPR_AIRWIRE_IDENT_SIZE) < 0) break;
+        if (append_frame(out, &used, x->meta, HPR_AIRWIRE_META_SIZE) < 0) break;
+        client_mark_known(c, x->icao);
     }
     int rc = ws_send(c->fd, 0x2, out, used);
     free(out);
@@ -281,17 +288,31 @@ static int client_read(hpr_ws_client_t *c) {
         msg[len] = 0;
         size_t consumed = off + (size_t)len;
         if (opcode == 0x8) return -1;
-        if (opcode == 0x9) { if (ws_send(c->fd, 0xA, msg, (size_t)len) < 0) return -1; }
+        if (opcode == 0x9 && ws_send(c->fd, 0xA, msg, (size_t)len) < 0) return -1;
         if (opcode == 0x1 && parse_bbox(c, (const char *)msg) < 0) return -1;
         memmove(c->rx, c->rx + consumed, c->rx_len - consumed); c->rx_len -= consumed;
     }
     return 0;
 }
 
-static void map_aircraft(struct aircraft *a, hpr_airwire_position_t *p, hpr_airwire_identity_t *id, int *have_pos) {
-    memset(p, 0, sizeof(*p)); memset(id, 0, sizeof(*id));
+static void copy_db_text(char *dst, size_t dst_len, const char *src, size_t src_len) {
+    if (!dst_len) return;
+    size_t n = 0;
+    while (n + 1 < dst_len && n < src_len && src[n]) { dst[n] = src[n]; n++; }
+    dst[n] = '\0';
+}
+
+static void map_aircraft(struct aircraft *a,
+                         hpr_airwire_position_t *p,
+                         hpr_airwire_identity_t *id,
+                         hpr_airwire_metadata_t *meta,
+                         int64_t now,
+                         int *have_pos) {
+    memset(p, 0, sizeof(*p));
+    memset(id, 0, sizeof(*id));
+    memset(meta, 0, sizeof(*meta));
     uint32_t icao = a->addr & 0xFFFFFFu;
-    p->icao = id->icao = icao;
+    p->icao = id->icao = meta->icao = icao;
     *have_pos = trackDataValid(&a->pos_reliable_valid);
     if (*have_pos) { p->lat_deg = a->latReliable; p->lon_deg = a->lonReliable; }
     if (altBaroReliable(a)) p->altitude_ft = a->baro_alt;
@@ -302,11 +323,18 @@ static void map_aircraft(struct aircraft *a, hpr_airwire_position_t *p, hpr_airw
     else if (trackDataValid(&a->geom_rate_valid)) p->vertical_rate_fpm = a->geom_rate;
 
     if (trackDataValid(&a->callsign_valid)) {
-        size_t n = 0; while (n < 8 && a->callsign[n]) { id->callsign[n] = a->callsign[n]; n++; }
+        size_t n = 0;
+        while (n < 8 && a->callsign[n]) { id->callsign[n] = a->callsign[n]; n++; }
         while (n > 0 && id->callsign[n-1] == ' ') id->callsign[--n] = '\0';
     }
     id->category = (uint8_t)(a->category & 0xFFu);
     if (trackDataValid(&a->squawk_valid)) id->squawk = (uint16_t)(a->squawk & 0xFFFFu);
+
+    struct binCraft bc;
+    memset(&bc, 0, sizeof(bc));
+    toBinCraft(a, &bc, now);
+    copy_db_text(meta->type_code, sizeof(meta->type_code), bc.typeCode, sizeof(bc.typeCode));
+    copy_db_text(meta->registration, sizeof(meta->registration), bc.registration, sizeof(bc.registration));
 }
 
 static size_t scan_changes(hpr_ws_change_t *changes, int64_t now) {
@@ -319,35 +347,64 @@ static size_t scan_changes(hpr_ws_change_t *changes, int64_t now) {
         if (a->addr & MODES_NON_ICAO_ADDRESS) continue;
         uint32_t icao = a->addr & 0xFFFFFFu;
         if (!icao) continue;
+
         int idx = cache_find(icao);
         if (idx < 0) {
             if (hpr_cache_len >= HPR_WS_CACHE_MAX) continue;
-            idx = (int)hpr_cache_len++; memset(&hpr_cache[idx], 0, sizeof(hpr_cache[idx])); hpr_cache[idx].icao = icao;
+            idx = (int)hpr_cache_len++;
+            memset(&hpr_cache[idx], 0, sizeof(hpr_cache[idx]));
+            hpr_cache[idx].icao = icao;
         }
+
         hpr_ws_cache_t *x = &hpr_cache[idx];
-        hpr_airwire_position_t p; hpr_airwire_identity_t id; int have_pos = 0;
-        map_aircraft(a, &p, &id, &have_pos);
-        uint8_t pos[HPR_AIRWIRE_POS_SIZE], ident[HPR_AIRWIRE_IDENT_SIZE];
+        hpr_airwire_position_t p;
+        hpr_airwire_identity_t id;
+        hpr_airwire_metadata_t meta;
+        int have_pos = 0;
+        map_aircraft(a, &p, &id, &meta, now, &have_pos);
+
+        uint8_t pos[HPR_AIRWIRE_POS_SIZE];
+        uint8_t ident[HPR_AIRWIRE_IDENT_SIZE];
+        uint8_t metadata[HPR_AIRWIRE_META_SIZE];
         int pos_ok = have_pos && hpr_airwire_encode_position(pos, &p);
         int id_ok = hpr_airwire_encode_identity(ident, &id);
+        int meta_ok = hpr_airwire_encode_metadata(metadata, &meta);
+        int first = x->last_seen_ms == 0;
         int pos_changed = pos_ok && (!x->have_pos || memcmp(x->pos, pos, sizeof(pos)) != 0 || now - x->last_pos_sent_ms >= HPR_WS_REFRESH_MS);
-        int id_changed = id_ok && (x->last_seen_ms == 0 || memcmp(x->ident, ident, sizeof(ident)) != 0);
-        x->last_seen_ms = now; x->have_pos = pos_ok; x->lat = p.lat_deg; x->lon = p.lon_deg;
+        int id_changed = id_ok && (first || memcmp(x->ident, ident, sizeof(ident)) != 0);
+        int meta_changed = meta_ok && (first || memcmp(x->meta, metadata, sizeof(metadata)) != 0);
+
+        x->last_seen_ms = now;
+        x->have_pos = pos_ok;
+        x->lat = p.lat_deg;
+        x->lon = p.lon_deg;
         if (pos_ok) memcpy(x->pos, pos, sizeof(pos));
         if (id_ok) memcpy(x->ident, ident, sizeof(ident));
+        if (meta_ok) memcpy(x->meta, metadata, sizeof(metadata));
         if (pos_changed) x->last_pos_sent_ms = now;
-        if ((pos_changed || id_changed) && nchanges < HPR_WS_CACHE_MAX) {
-            hpr_ws_change_t *ch = &changes[nchanges++]; memset(ch, 0, sizeof(*ch));
-            ch->icao=icao; ch->pos_changed=pos_changed; ch->ident_changed=id_changed; ch->have_pos=pos_ok; ch->lat=x->lat; ch->lon=x->lon;
+
+        if ((pos_changed || id_changed || meta_changed) && nchanges < HPR_WS_CACHE_MAX) {
+            hpr_ws_change_t *ch = &changes[nchanges++];
+            memset(ch, 0, sizeof(*ch));
+            ch->icao = icao;
+            ch->pos_changed = pos_changed;
+            ch->ident_changed = id_changed;
+            ch->meta_changed = meta_changed;
+            ch->have_pos = pos_ok;
+            ch->lat = x->lat;
+            ch->lon = x->lon;
             if (pos_ok) memcpy(ch->pos, x->pos, sizeof(ch->pos));
             if (id_ok) memcpy(ch->ident, x->ident, sizeof(ch->ident));
+            if (meta_ok) memcpy(ch->meta, x->meta, sizeof(ch->meta));
         }
     }
     ca_unlock_read(ca);
 
     for (size_t i = 0; i < hpr_cache_len;) {
         if (now - hpr_cache[i].last_seen_ms > HPR_WS_STALE_MS) {
-            hpr_cache[i] = hpr_cache[hpr_cache_len - 1]; hpr_cache_len--; continue;
+            hpr_cache[i] = hpr_cache[hpr_cache_len - 1];
+            hpr_cache_len--;
+            continue;
         }
         i++;
     }
@@ -358,26 +415,25 @@ static int send_changes(hpr_ws_client_t *c, const hpr_ws_change_t *changes, size
     uint8_t *out = malloc(HPR_WS_PAYLOAD_MAX);
     if (!out) return -1;
     size_t used = 0;
+
     for (size_t i = 0; i < count; i++) {
         const hpr_ws_change_t *ch = &changes[i];
         if (!bbox_match(c, ch->have_pos, ch->lat, ch->lon)) continue;
-        if (ch->pos_changed) {
-            if (used + HPR_AIRWIRE_POS_SIZE > HPR_WS_PAYLOAD_MAX) break;
-            memcpy(out + used, ch->pos, HPR_AIRWIRE_POS_SIZE); used += HPR_AIRWIRE_POS_SIZE;
-            if (!client_knows(c, ch->icao)) {
-                if (used + HPR_AIRWIRE_IDENT_SIZE > HPR_WS_PAYLOAD_MAX) break;
-                memcpy(out + used, ch->ident, HPR_AIRWIRE_IDENT_SIZE); used += HPR_AIRWIRE_IDENT_SIZE;
-                client_mark_known(c, ch->icao);
-            }
-        } else if (ch->ident_changed && client_knows(c, ch->icao)) {
-            if (used + HPR_AIRWIRE_IDENT_SIZE > HPR_WS_PAYLOAD_MAX) break;
-            memcpy(out + used, ch->ident, HPR_AIRWIRE_IDENT_SIZE); used += HPR_AIRWIRE_IDENT_SIZE;
-        } else if (ch->ident_changed && !c->bbox_set) {
-            if (used + HPR_AIRWIRE_IDENT_SIZE > HPR_WS_PAYLOAD_MAX) break;
-            memcpy(out + used, ch->ident, HPR_AIRWIRE_IDENT_SIZE); used += HPR_AIRWIRE_IDENT_SIZE;
+        int known = client_knows(c, ch->icao);
+
+        if (ch->pos_changed && append_frame(out, &used, ch->pos, HPR_AIRWIRE_POS_SIZE) < 0) break;
+
+        if (!known && (ch->pos_changed || !c->bbox_set)) {
+            if (append_frame(out, &used, ch->ident, HPR_AIRWIRE_IDENT_SIZE) < 0) break;
+            if (append_frame(out, &used, ch->meta, HPR_AIRWIRE_META_SIZE) < 0) break;
             client_mark_known(c, ch->icao);
+            continue;
         }
+
+        if (known && ch->ident_changed && append_frame(out, &used, ch->ident, HPR_AIRWIRE_IDENT_SIZE) < 0) break;
+        if (known && ch->meta_changed && append_frame(out, &used, ch->meta, HPR_AIRWIRE_META_SIZE) < 0) break;
     }
+
     int rc = used ? ws_send(c->fd, 0x2, out, used) : 0;
     free(out);
     return rc;
@@ -386,13 +442,20 @@ static int send_changes(hpr_ws_client_t *c, const hpr_ws_change_t *changes, size
 static int make_listener(void) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return -1;
-    int one = 1; setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    struct sockaddr_in sa; memset(&sa, 0, sizeof(sa)); sa.sin_family = AF_INET; sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    struct sockaddr_in sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sin_family = AF_INET;
+    sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     const char *v = getenv("HPR_AIRWIRE_WS_PORT");
     long port = v && *v ? strtol(v, NULL, 10) : HPR_WS_DEFAULT_PORT;
     if (port < 1 || port > 65535) port = HPR_WS_DEFAULT_PORT;
     sa.sin_port = htons((uint16_t)port);
-    if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0 || listen(fd, HPR_WS_MAX_CLIENTS) < 0 || set_nonblock(fd) < 0) { close(fd); return -1; }
+    if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0 || listen(fd, HPR_WS_MAX_CLIENTS) < 0 || set_nonblock(fd) < 0) {
+        close(fd);
+        return -1;
+    }
     fprintf(stderr, "HPR AirWire binary WS: http://127.0.0.1:%ld/ws/air\n", port);
     return fd;
 }
@@ -400,31 +463,49 @@ static int make_listener(void) {
 static void *ws_thread(void *unused) {
     MODES_NOTUSED(unused);
     int listener = make_listener();
-    if (listener < 0) { fprintf(stderr, "HPR AirWire WS: listener start failed: %s\n", strerror(errno)); return NULL; }
+    if (listener < 0) {
+        fprintf(stderr, "HPR AirWire WS: listener start failed: %s\n", strerror(errno));
+        return NULL;
+    }
+
     hpr_ws_client_t clients[HPR_WS_MAX_CLIENTS];
-    for (int i = 0; i < HPR_WS_MAX_CLIENTS; i++) { memset(&clients[i], 0, sizeof(clients[i])); clients[i].fd = -1; }
+    for (int i = 0; i < HPR_WS_MAX_CLIENTS; i++) {
+        memset(&clients[i], 0, sizeof(clients[i]));
+        clients[i].fd = -1;
+    }
     hpr_ws_change_t changes[HPR_WS_CACHE_MAX];
     int64_t next_scan = mstime();
 
     while (!Modes.exitSoon) {
-        struct pollfd pfds[1 + HPR_WS_MAX_CLIENTS]; int map[1 + HPR_WS_MAX_CLIENTS];
-        int nfds = 1; pfds[0] = (struct pollfd){.fd=listener,.events=POLLIN}; map[0] = -1;
+        struct pollfd pfds[1 + HPR_WS_MAX_CLIENTS];
+        int map[1 + HPR_WS_MAX_CLIENTS];
+        int nfds = 1;
+        pfds[0] = (struct pollfd){.fd=listener,.events=POLLIN};
+        map[0] = -1;
         for (int i = 0; i < HPR_WS_MAX_CLIENTS; i++) if (clients[i].fd >= 0) {
-            pfds[nfds] = (struct pollfd){.fd=clients[i].fd,.events=POLLIN}; map[nfds++] = i;
+            pfds[nfds] = (struct pollfd){.fd=clients[i].fd,.events=POLLIN};
+            map[nfds++] = i;
         }
+
         poll(pfds, (nfds_t)nfds, 50);
         if (pfds[0].revents & POLLIN) {
             int fd = accept(listener, NULL, NULL);
             if (fd >= 0) {
-                int slot = -1; for (int i = 0; i < HPR_WS_MAX_CLIENTS; i++) if (clients[i].fd < 0) { slot = i; break; }
+                int slot = -1;
+                for (int i = 0; i < HPR_WS_MAX_CLIENTS; i++) if (clients[i].fd < 0) { slot = i; break; }
                 if (slot < 0 || ws_handshake(fd) < 0) close(fd);
-                else { clients[slot].fd = fd; if (send_snapshot(&clients[slot]) < 0) client_close(&clients[slot]); }
+                else {
+                    clients[slot].fd = fd;
+                    if (send_snapshot(&clients[slot]) < 0) client_close(&clients[slot]);
+                }
             }
         }
+
         for (int p = 1; p < nfds; p++) if (pfds[p].revents) {
             int i = map[p];
             if ((pfds[p].revents & (POLLERR|POLLHUP|POLLNVAL)) || client_read(&clients[i]) < 0) client_close(&clients[i]);
         }
+
         int64_t now = mstime();
         if (now >= next_scan) {
             size_t n = scan_changes(changes, now);
@@ -432,6 +513,7 @@ static void *ws_thread(void *unused) {
             next_scan = now + HPR_WS_SCAN_MS;
         }
     }
+
     for (int i = 0; i < HPR_WS_MAX_CLIENTS; i++) client_close(&clients[i]);
     close(listener);
     return NULL;
@@ -444,4 +526,6 @@ static void start_once(void) {
     else fprintf(stderr, "HPR AirWire WS: pthread_create failed: %s\n", strerror(rc));
 }
 
-void hprAirWireWsStart(void) { pthread_once(&hpr_ws_once, start_once); }
+void hprAirWireWsStart(void) {
+    pthread_once(&hpr_ws_once, start_once);
+}
