@@ -42,6 +42,7 @@ jobs:
         run: |
           node --check hpr/edge/ui/airwire-adapter.js
           node --check hpr/edge/ui/hpr-config.js
+          node --check hpr/edge/ui/edge-g3-map.js
           node --check test/edge_browser_smoke.spec.js
 
       - name: Gate 1 local aircraft rows
@@ -50,6 +51,13 @@ jobs:
           grep -Fq 'edge-g1-list.css' hpr/edge/ui/hpr-config.js
           grep -Fq '#airList .row>.plane-icon{display:none}' hpr/edge/ui/edge-g1-list.css
           grep -Fq '#airList .row{grid-template-columns:8px 1fr auto}' hpr/edge/ui/edge-g1-list.css
+
+      - name: Gate 3 selected aircraft map policy
+        run: |
+          test -s hpr/edge/ui/edge-g3-map.js
+          grep -Fq 'edge-g3-map.js' hpr/edge/ui/hpr-config.js
+          grep -Fq "layer?.id==='aircraft-halo'" hpr/edge/ui/edge-g3-map.js
+          grep -Fq "layer?.id==='aircraft-symbol'" hpr/edge/ui/edge-g3-map.js
 
       - name: Gate 2 Chromium interaction smoke
         env:
