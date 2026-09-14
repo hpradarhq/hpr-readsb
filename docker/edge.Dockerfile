@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.8.3-edge.2
-ARG FE_BUILD=260914.9
+ARG FE_VERSION=4.8.4-edge.1
+ARG FE_BUILD=260914.10
 
 FROM debian:bookworm-slim AS builder
 
@@ -67,21 +67,21 @@ RUN sed -i \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
       -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n<script src="/edge-ui-patch.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"readsb-real","marker":"cf-acicon","flags":"lipis-flag-icons-v7.5.0","photo":"planespotters-lazy","traffic_api":"traffic.hpradar.com-selected-only","table":"stable-2.5s","settings":"persistent-pin6-live","ux":"e1-e7-fr24-airnav","map_labels":"vi-hoangsa-truongsa-selfheal"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"auto-selected-readsb-real","replay":"compact-explicit","marker":"cf-acicon","flags":"lipis-flag-icons-v7.5.0-stable-head","photo":"planespotters-lazy","traffic_api":"traffic.hpradar.com-selected-only","table":"stable-2.5s","settings":"tabbed-pin6-presets","detail":"airnav-aircraft-fr24-station","ux":"e1-e7-fr24-airnav","map_labels":"vi-hoangsa-truongsa-city-scale-selfheal"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge /usr/local/lib/hpr-edge/www/cgi-bin/admin
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
       hpradar.fe.build="${FE_BUILD}" \
       hpradar.airwire="binary-v1+meta0a" \
-      hpradar.trace="readsb-real" \
+      hpradar.trace="auto-selected-readsb-real" \
       hpradar.marker="cf-acicon" \
       hpradar.flags="lipis-flag-icons-v7.5.0" \
       hpradar.traffic_enrichment="selected-only" \
       hpradar.table_refresh="2.5s-stable" \
-      hpradar.settings="persistent-pin6-live" \
-      hpradar.ux="e1-e7-fr24-airnav" \
-      hpradar.map_labels="vi-hoangsa-truongsa-selfheal"
+      hpradar.settings="tabbed-pin6-presets" \
+      hpradar.detail="airnav-aircraft-fr24-station" \
+      hpradar.map_labels="vi-city-scale-selfheal"
 
 ENV READSB_JSON_INTERVAL=1 \
     READSB_TRACE_INTERVAL=1 \
