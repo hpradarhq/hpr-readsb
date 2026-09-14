@@ -29,7 +29,7 @@ function airwireFrame() {
 const MAPLIBRE_STUB = `(()=>{
   class Bounds { extend(){ return this; } }
   class Map {
-    constructor(opts){ this.opts=opts; this.sources=new globalThis.Map(); this.layers=new globalThis.Map(); this.images=new Set(); this.handlers={}; this.zoom=opts.zoom||6; setTimeout(()=>this.emit('load'),0); }
+    constructor(opts){ this.opts=opts; this.sources=new globalThis.Map(); this.layers=new globalThis.Map(); this.images=new Set(); this.handlers={}; this.zoom=opts.zoom||6; globalThis.__hprTestMap=this; setTimeout(()=>this.emit('load'),0); }
     on(ev,a,b){ const fn=typeof a==='function'?a:b; (this.handlers[ev]||(this.handlers[ev]=[])).push(fn); return this; }
     once(ev,fn){ const wrap=(...args)=>{ this.off(ev,wrap); fn(...args); }; return this.on(ev,wrap); }
     off(ev,fn){ this.handlers[ev]=(this.handlers[ev]||[]).filter(x=>x!==fn); }
@@ -106,6 +106,16 @@ test('Atlas Edge remains clickable and responsive', async () => {
   const row = page.locator('.row').first();
   await expect(row).toBeVisible({timeout:5000});
   await expect(page.locator('.row .plane-icon').first()).toBeHidden();
+
+  await expect.poll(() => page.evaluate(() => !!globalThis.__hprTestMap?.getLayer('aircraft-symbol'))).toBe(true);
+  const mapPolicy = await page.evaluate(() => {
+    const halo=globalThis.__hprTestMap.getLayer('aircraft-halo');
+    const symbol=globalThis.__hprTestMap.getLayer('aircraft-symbol');
+    return {haloRadius:halo.paint['circle-radius'],haloStroke:halo.paint['circle-stroke-color'],symbolSize:symbol.layout['icon-size']};
+  });
+  expect(mapPolicy.haloRadius).toBe(8);
+  expect(JSON.stringify(mapPolicy.haloStroke)).not.toContain('selected');
+  expect(mapPolicy.symbolSize[0]).toBe('case');
 
   const collection = page.locator('#collection');
   const beforeOpen = await collection.evaluate(el => el.classList.contains('open'));
