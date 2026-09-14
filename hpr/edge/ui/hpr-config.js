@@ -4,3 +4,4 @@ window.HPR_CONFIG = {
 };
 
 document.write('<link rel="stylesheet" href="/edge-g1-list.css">');
+document.write('<script src="/edge-g3-map.js"><\/script>');
