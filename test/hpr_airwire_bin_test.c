@@ -45,6 +45,16 @@ int main(void) {
     require_true("identity golden encode", hpr_airwire_encode_identity(id_out, &id));
     require_bytes("identity golden", id_out, id_golden, sizeof(id_golden));
 
+    const hpr_airwire_metadata_t meta = {
+        .icao = 0xABCDEF, .type_code = "A320", .registration = "VN-A123",
+    };
+    const uint8_t meta_golden[HPR_AIRWIRE_META_SIZE] = {
+        0x0a,0xef,0xcd,0xab,0x41,0x33,0x32,0x30,0x56,0x4e,0x2d,0x41,0x31,0x32,0x33,0x00,0x00,0x00,0x00,0x00
+    };
+    uint8_t meta_out[HPR_AIRWIRE_META_SIZE];
+    require_true("metadata golden encode", hpr_airwire_encode_metadata(meta_out, &meta));
+    require_bytes("metadata golden", meta_out, meta_golden, sizeof(meta_golden));
+
     hpr_airwire_position_t negative = {
         .icao = 1, .lon_deg = -115.0, .lat_deg = -36.0,
         .altitude_ft = -200, .track_deg = -1.0, .ground_speed_kt = 7000.0,
