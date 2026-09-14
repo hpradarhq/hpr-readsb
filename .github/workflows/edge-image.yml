@@ -7,6 +7,7 @@ on:
       - "feat/edge-airwire-bin-*"
       - feat/edge-atlas-v4.7-native-airwire-v2
       - feat/edge-atlas-real-trace-replay
+      - feat/edge-e1-e7-ux
     tags:
       - "edge-v*"
     paths-ignore:
@@ -44,6 +45,13 @@ jobs:
           node --check hpr/edge/ui/aircraft-renderer.js
           node --check hpr/edge/ui/edge-history.js
           node --check hpr/edge/ui/edge-ui-patch.js
+          node --check hpr/edge/ui/edge-ops.js
+          node --check hpr/edge/ui/edge-e1e7.js
+          node --check hpr/edge/ui/edge-benchmark.js
+          node --check tools/e7-manual-capture.js
+
+      - name: Edge capability contract
+        run: python3 test/edge_feature_score.py
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
@@ -53,6 +61,9 @@ jobs:
 
       - name: Synthetic 400-aircraft websocket load
         run: python3 test/hpr_airwire_ws_synthetic.py --readsb ./readsb
+
+      - name: E7 comparator syntax
+        run: python3 -m py_compile test/e7_compare.py
 
   build:
     name: Build arm64 + armv7
@@ -89,12 +100,13 @@ jobs:
             type=raw,value=edge-test,enable=${{ startsWith(github.ref, 'refs/heads/feat/edge-airwire-bin-') }}
             type=raw,value=edge-native,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-native-airwire-v2' }}
             type=raw,value=edge-next,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-real-trace-replay' }}
+            type=raw,value=edge-ux,enable=${{ github.ref == 'refs/heads/feat/edge-e1-e7-ux' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-,format=long
           labels: |
             org.opencontainers.image.title=HPRadar readsb Edge
-            org.opencontainers.image.description=HPR readsb + native AirWire metadata + Atlas Edge real trace/replay UI
+            org.opencontainers.image.description=HPR readsb + AirWire + Atlas Edge E1-E7 operator UX
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push
