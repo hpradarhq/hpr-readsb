@@ -43,6 +43,7 @@ jobs:
           node --check hpr/edge/ui/airwire-adapter.js
           node --check hpr/edge/ui/hpr-config.js
           node --check hpr/edge/ui/edge-g3-map.js
+          node --check hpr/edge/ui/edge-g4-calm-list.js
           node --check test/edge_browser_smoke.spec.js
 
       - name: Gate 1 local aircraft rows
@@ -59,7 +60,14 @@ jobs:
           grep -Fq "layer?.id==='aircraft-halo'" hpr/edge/ui/edge-g3-map.js
           grep -Fq "layer?.id==='aircraft-symbol'" hpr/edge/ui/edge-g3-map.js
 
-      - name: Gate 2 Chromium interaction smoke
+      - name: Gate 4 calm local aircraft list
+        run: |
+          test -s hpr/edge/ui/edge-g4-calm-list.js
+          grep -Fq 'edge-g4-calm-list.js' hpr/edge/ui/hpr-config.js
+          grep -Fq 'const WINDOW_MS=2500' hpr/edge/ui/edge-g4-calm-list.js
+          grep -Fq "this.id!=='airList'" hpr/edge/ui/edge-g4-calm-list.js
+
+      - name: Chromium interaction regression
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
         run: |
