@@ -37,7 +37,7 @@ jobs:
       - name: Build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev
+          sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev jq
 
       - name: Edge FE syntax
         run: |
@@ -51,14 +51,20 @@ jobs:
           node --check hpr/edge/ui/edge-enrich.js
           node --check hpr/edge/ui/edge-traffic-enrich.js
           node --check hpr/edge/ui/edge-map-policy.js
+          node --check hpr/edge/ui/edge-admin-ui.js
           node --check hpr/edge/ui/edge-benchmark.js
           node --check tools/e7-manual-capture.js
+          sh -n hpr/edge/entrypoint.sh
+          sh -n hpr/edge/admin-v2.cgi
 
       - name: AirWire adapter runtime smoke
         run: node test/airwire_adapter_runtime_smoke.js
 
-      - name: Calm UI runtime smoke
+      - name: Calm UI + MapLibre expression runtime smoke
         run: node test/edge_calm_ui_runtime_smoke.js
+
+      - name: Persistent admin CGI smoke
+        run: sh test/edge_admin_cgi_smoke.sh
 
       - name: Traffic enrichment runtime smoke
         run: node test/edge_traffic_enrich_runtime_smoke.js
@@ -74,6 +80,13 @@ jobs:
 
       - name: Build readsb
         run: make -j"$(nproc)" readsb DISABLE_INTERACTIVE=yes OPTIMIZE="-O2"
+
+      - name: readsb feeder CLI contract
+        run: |
+          ./readsb --help 2>&1 | grep -q -- '--uuid-file'
+          ./readsb --help 2>&1 | grep -q -- '--net-connector'
+          grep -q 'beast_reduce_plus_out' readsb.c
+          grep -q 'strncmp(token\[k\], "uuid=", 5)' readsb.c
 
       - name: Synthetic 400-aircraft websocket load
         run: python3 test/hpr_airwire_ws_synthetic.py --readsb ./readsb
