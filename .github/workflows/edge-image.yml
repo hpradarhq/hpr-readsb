@@ -42,6 +42,7 @@ jobs:
         run: |
           node --check hpr/edge/ui/airwire-adapter.js
           node --check hpr/edge/ui/hpr-config.js
+          node --check test/edge_browser_smoke.spec.js
 
       - name: Gate 1 local aircraft rows
         run: |
@@ -49,6 +50,14 @@ jobs:
           grep -Fq 'edge-g1-list.css' hpr/edge/ui/hpr-config.js
           grep -Fq '#airList .row>.plane-icon{display:none}' hpr/edge/ui/edge-g1-list.css
           grep -Fq '#airList .row{grid-template-columns:8px 1fr auto}' hpr/edge/ui/edge-g1-list.css
+
+      - name: Gate 2 Chromium interaction smoke
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+        run: |
+          google-chrome --version
+          npm install --no-save --ignore-scripts @playwright/test@1.55.0
+          npx playwright test test/edge_browser_smoke.spec.js --reporter=line --workers=1
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
