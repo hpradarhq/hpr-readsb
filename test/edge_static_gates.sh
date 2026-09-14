@@ -48,3 +48,10 @@ grep -Fq 'data-hpr-photo-slot' hpr/edge/ui/edge-g7-enrich.js
 grep -Fq 'location /api/traffic/' hpr/edge/nginx.conf
 grep -Fq 'proxy_pass https://traffic.hpradar.com/' hpr/edge/nginx.conf
 grep -Fq 'location /api/photo/hex/' hpr/edge/nginx.conf
+
+# G8 local station overview
+test -s hpr/edge/ui/edge-g8-station.js
+grep -Fq 'edge-g8-station.js' hpr/edge/ui/hpr-config.js
+grep -Fq 'data-hpr-g8="1"' hpr/edge/ui/edge-g8-station.js
+grep -Fq 'AirWire frames' hpr/edge/ui/edge-g8-station.js
+! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g8-station.js
