@@ -1,0 +1,1 @@
+hpradarhq/hpr-cf-fe@main js/acicon.js donor; Edge only (<=400 aircraft), no clustering/LOD.
