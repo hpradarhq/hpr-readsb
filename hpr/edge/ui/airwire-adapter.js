@@ -1,7 +1,7 @@
 /* Native HPR AirWire v1 -> Atlas model.
  * Motion hot path stays binary /ws/air.
  * 0x0A carries DB-backed ICAO type + registration.
- * Slow-changing source/RSSI/geom/db fields may still be enriched from local readsb JSON.
+ * Slow-changing source/RSSI/geom/local-DB fields are enriched once from readsb JSON.
  */
 (()=>{'use strict';
 const POS=0x02,IDENT=0x06,META=0x0A,POS_SIZE=20,IDENT_SIZE=15,META_SIZE=20,STALE_MS=120000,META_MS=3000;
@@ -15,7 +15,7 @@ const clean=s=>{s=String(s??'').trim();return s||null};
 const SRC={adsb_icao:[0,'ADS-B'],adsb_icao_nt:[1,'ADS-B NT'],adsr_icao:[2,'ADS-R'],tisb_icao:[3,'TIS-B'],adsc:[4,'ADS-C'],mlat:[5,'MLAT'],mode_s:[7,'Mode-S'],adsb_other:[8,'ADS-B other'],adsr_other:[9,'ADS-R other'],tisb_trackfile:[10,'TIS-B track'],tisb_other:[11,'TIS-B other'],mode_ac:[12,'Mode-A']};
 function aircraft(id){
   let a=cache.get(id);
-  if(!a){a={kind:'aircraft',id,sourceClass:13,source:'Unknown',callsign:null,latitude:null,longitude:null,coordinates:null,barometricAltitudeFt:null,geometricAltitudeFt:null,groundSpeedKt:null,trackDeg:null,barometricRateFpm:null,geometricRateFpm:null,squawk:null,categoryCode:null,emergency:null,rssiDbfs:null,registration:null,typeCode:null,typeDescription:null,dbFlags:0,messageCount:0,isGround:false,isAlert:false,isSpi:false,isNonIcao:false,hasPosition:false,isMlat:false,lastSeenMs:0,lastPositionMs:0};cache.set(id,a)}
+  if(!a){a={kind:'aircraft',id,sourceClass:13,source:'Unknown',callsign:null,latitude:null,longitude:null,coordinates:null,barometricAltitudeFt:null,geometricAltitudeFt:null,groundSpeedKt:null,trackDeg:null,barometricRateFpm:null,geometricRateFpm:null,squawk:null,categoryCode:null,emergency:null,rssiDbfs:null,registration:null,typeCode:null,typeDescription:null,ownerOperator:null,year:null,dbFlags:0,messageCount:0,isGround:false,isAlert:false,isSpi:false,isNonIcao:false,hasPosition:false,isMlat:false,lastSeenMs:0,lastPositionMs:0};cache.set(id,a)}
   return a;
 }
 function decodePosition(d,o,now){
@@ -40,7 +40,7 @@ function decodeMetadata(d,o,now){
 function decode(buffer){const d=new DataView(buffer);let o=0;const now=Date.now();while(o<d.byteLength){const t=d.getUint8(o),n=t===POS?POS_SIZE:t===IDENT?IDENT_SIZE:t===META?META_SIZE:0;if(!n||o+n>d.byteLength)break;if(t===POS)decodePosition(d,o,now);else if(t===IDENT)decodeIdentity(d,o,now);else decodeMetadata(d,o,now);totalFrames++;o+=n}}
 function enrich(x){
   const id=clean(x?.hex)?.toLowerCase();if(!id||id.startsWith('~'))return;const a=aircraft(id),now=Date.now();
-  a.callsign=clean(x.flight)||a.callsign;a.registration=a.registration||clean(x.r);a.typeCode=a.typeCode||clean(x.t)?.toUpperCase()||null;a.typeDescription=clean(x.desc);a.categoryCode=clean(x.category)?.toUpperCase()||a.categoryCode;a.squawk=clean(x.squawk)||a.squawk;a.emergency=clean(x.emergency);a.rssiDbfs=Number.isFinite(Number(x.rssi))?Number(x.rssi):a.rssiDbfs;a.messageCount=Number.isFinite(Number(x.messages))?Number(x.messages):a.messageCount;a.dbFlags=Number.isFinite(Number(x.dbFlags))?Number(x.dbFlags):a.dbFlags;
+  a.callsign=clean(x.flight)||a.callsign;a.registration=a.registration||clean(x.r);a.typeCode=a.typeCode||clean(x.t)?.toUpperCase()||null;a.typeDescription=clean(x.desc)||a.typeDescription;a.ownerOperator=clean(x.ownOp)||a.ownerOperator;a.year=clean(x.year)||a.year;a.categoryCode=clean(x.category)?.toUpperCase()||a.categoryCode;a.squawk=clean(x.squawk)||a.squawk;a.emergency=clean(x.emergency);a.rssiDbfs=Number.isFinite(Number(x.rssi))?Number(x.rssi):a.rssiDbfs;a.messageCount=Number.isFinite(Number(x.messages))?Number(x.messages):a.messageCount;a.dbFlags=Number.isFinite(Number(x.dbFlags))?Number(x.dbFlags):a.dbFlags;
   const src=SRC[String(x.type||'').toLowerCase()]||[13,'Unknown'];a.sourceClass=src[0];a.source=src[1];a.isMlat=src[0]===5||(Array.isArray(x.mlat)&&x.mlat.includes('lat'));a.isGround=x.alt_baro==='ground'||x.ground===true;a.isAlert=!!x.alert;a.isSpi=!!x.spi;a.isNonIcao=String(x.hex||'').startsWith('~');
   if(Number.isFinite(Number(x.alt_geom)))a.geometricAltitudeFt=Number(x.alt_geom);if(Number.isFinite(Number(x.geom_rate)))a.geometricRateFpm=Number(x.geom_rate);if(Number.isFinite(Number(x.baro_rate)))a.barometricRateFpm=Number(x.baro_rate);
   if(!a.hasPosition&&Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lon))){a.latitude=Number(x.lat);a.longitude=Number(x.lon);a.coordinates=[a.longitude,a.latitude];a.hasPosition=true;a.lastPositionMs=now-(Number(x.seen_pos)||0)*1000}
@@ -54,7 +54,7 @@ function connect(){try{ws=new WebSocket(wsUrl());ws.binaryType='arraybuffer'}cat
 function reconnect(){const wait=retryMs;retryMs=Math.min(retryMs*2,10000);setTimeout(connect,wait)}
 function categoryCode(v){if(typeof v==='string'&&/^[ABC]\d$/i.test(v))return v.toUpperCase();const n=Number(v);return Number.isFinite(n)&&n>0?n.toString(16).padStart(2,'0').toUpperCase():null}
 function adaptRow(r){if(!Array.isArray(r)||!r[0])return null;const seen=Number(r[16]),flags=Number(r[2]||0),src=Number(r[1]??13);return{kind:'aircraft',id:String(r[0]).toLowerCase(),sourceClass:src,source:(Object.values(SRC).find(v=>v[0]===src)||[13,'Unknown'])[1],callsign:r[3]||null,latitude:r[4]??null,longitude:r[5]??null,coordinates:r[4]==null||r[5]==null?null:[r[5],r[4]],barometricAltitudeFt:r[6]??null,geometricAltitudeFt:r[7]??null,groundSpeedKt:r[8]??null,trackDeg:r[9]??null,barometricRateFpm:r[10]??null,geometricRateFpm:r[11]??null,squawk:r[12]||null,categoryCode:categoryCode(r[13]),emergency:r[14]||null,seenPositionSec:r[15]??null,seenSec:Number.isFinite(seen)?seen:null,rssiDbfs:r[17]??null,registration:r[18]||null,typeCode:r[19]||null,dbFlags:r[20]||0,messageCount:r[21]||0,isGround:!!(flags&1),isAlert:!!(flags&2),isSpi:!!(flags&4),isNonIcao:!!(flags&8),hasPosition:!!(flags&16),isMlat:!!(flags&32),freshness:seen<=10?'live':seen<=30?'aging':'stale'}}
-function adaptEnvelope(p){if(!Array.isArray(p)||p[0]!==1||!Array.isArray(p[3]))throw new TypeError('Invalid AirWire v1 envelope');return{version:1,generationTime:Number(p[1])||0,totalMessages:Number(p[2])||0,aircraft:p[3].map(adaptRow).filter(Boolean)}}
+function dbMeta(id){const a=cache.get(String(id||'').toLowerCase());return a?{id:a.id,registration:a.registration,typeCode:a.typeCode,typeDescription:a.typeDescription,ownerOperator:a.ownerOperator,year:a.year,dbFlags:a.dbFlags,categoryCode:a.categoryCode}:null}
 window.fetch=async function(input,init){const raw=typeof input==='string'?input:input?.url;let path='';try{path=new URL(raw,location.href).pathname}catch(_){}if(path==='/api/air/v1')return{ok:connected||cache.size>0,status:connected||cache.size>0?200:503,json:async()=>envelope()};return nativeFetch(input,init)};
-window.HPRAirWire=Object.freeze({adaptEnvelope,stats:()=>({connected,aircraft:cache.size,frames:totalFrames})});connect();refreshMetadata();
+window.HPRAirWire=Object.freeze({adaptEnvelope,stats:()=>({connected,aircraft:cache.size,frames:totalFrames}),meta:dbMeta});connect();refreshMetadata();
 })();
