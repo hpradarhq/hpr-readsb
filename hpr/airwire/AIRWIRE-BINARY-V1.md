@@ -1,8 +1,12 @@
 # HPR AirWire Binary v1
 
-Status: frozen for Edge G-BE0.
+Status: frozen core frames with additive metadata.
 
 This is the production aircraft state wire between HPR readsb Edge and Atlas Edge. The existing JSON AirWire remains diagnostic/fallback output only.
+
+## Compatibility rule
+
+`0x02` and `0x06` are frozen. New information is added as new frame types; existing frame sizes and meanings are never changed.
 
 ## 0x02 — aircraft position / motion
 
@@ -41,6 +45,19 @@ Fixed size: 15 bytes.
 
 Missing callsign is eight NUL bytes. Missing category or squawk is zero.
 
+## 0x0A — aircraft metadata
+
+Fixed size: 20 bytes. This is slow-changing DB-backed metadata used by Edge to select the correct aircraft silhouette and display registration.
+
+| Offset | Size | Field | Encoding |
+| ---: | ---: | --- | --- |
+| 0 | 1 | type | `0x0A` |
+| 1 | 3 | ICAO24 | unsigned 24-bit LE |
+| 4 | 4 | ICAO type designator | ASCII, NUL padded; e.g. `A320` |
+| 8 | 12 | registration | ASCII, NUL padded; e.g. `VN-A123` |
+
+The backend sources these fields from readsb's local aircraft database through `binCraft`. A blank DB value is encoded as NUL padding. Country flags are derived client-side from ICAO24 allocation and photos are lazy external enrichment; neither belongs on the hot AirWire stream.
+
 ## Address policy
 
 Binary v1 carries only a 24-bit ICAO key and has no discriminator for non-ICAO addresses. Therefore non-ICAO readsb addresses are not emitted on binary v1. They remain available in readsb/HPR diagnostic state. This avoids silent key collision. A future additive frame may carry a wider/discriminated identity.
@@ -58,7 +75,7 @@ box:S,N,W,E,Z
 
 `Z` is accepted and ignored by Edge v1. Bbox filtering is applied; LOD decimation and zstd are not part of Edge v1.
 
-Position records are refreshed periodically even if byte-identical to bound silent staleness. Identity/status is sent on first visibility for a client and when it changes. There is no tombstone frame in v1; FE aging handles disappearances.
+Position records are refreshed periodically even if byte-identical to bound silent staleness. Identity and metadata are sent on first visibility for a client and when they change. There is no tombstone frame in v1; FE aging handles disappearances.
 
 ## Golden vectors
 
@@ -85,6 +102,18 @@ Expected bytes:
 
 ```text
 06efcdab48564e3132330000a33412
+```
+
+Metadata input:
+
+```text
+ICAO=ABCDEF type=A320 registration=VN-A123
+```
+
+Expected bytes:
+
+```text
+0aefcdab41333230564e2d413132330000000000
 ```
 
 These vectors are copied into the C unit test and freeze endianness, scaling and padding behavior.
