@@ -91,7 +91,7 @@ start_readsb() {
   if [ -n "$LON" ]; then set -- "$@" "--lon=${LON}"; fi
   if [ -n "${READSB_MAX_RANGE_NM:-}" ]; then set -- "$@" "--max-range=${READSB_MAX_RANGE_NM}"; fi
   if [ -n "$UUID" ]; then
-    umask 077; printf '%s\n' "$UUID" > "$RUN_DIR/uuid"; chmod 600 "$RUN_DIR/uuid"
+    umask 077; printf '%s' "$UUID" > "$RUN_DIR/uuid"; chmod 600 "$RUN_DIR/uuid"
     set -- "$@" "--uuid-file=$RUN_DIR/uuid"
   fi
 
