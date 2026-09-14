@@ -32,5 +32,6 @@ function build(){
  document.addEventListener('click',e=>{if(state.task&&!e.target.closest('#e7Bench'))state.clicks++},true);
 }
 function observeBoot(){const start=performance.now();const t=setInterval(()=>{if(state.firstAircraftMs==null&&aircraftCount()>0)state.firstAircraftMs=Math.round(performance.now());if(state.firstMapMs==null&&window.HPREdgeMap?.loaded?.())state.firstMapMs=Math.round(performance.now());if((state.firstAircraftMs!=null&&state.firstMapMs!=null)||performance.now()-start>30000)clearInterval(t)},100)}
-document.addEventListener('DOMContentLoaded',()=>{build();observeBoot()},{once:true});
+observeBoot();
+document.addEventListener('DOMContentLoaded',build,{once:true});
 })();
