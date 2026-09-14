@@ -149,7 +149,7 @@ test('Atlas Edge remains clickable and responsive', async () => {
     await new Promise(resolve=>setTimeout(resolve,window.HPRCalmList.windowMs+80));
     el.innerHTML='<button class="row" data-id="b">B3</button><button class="row" data-id="a">A3</button>';
     const background=ids();
-    window.HPRCalmList.force();
+    window.HPRCalmList.force(el);
     el.innerHTML='<button class="row" data-id="b">B4</button><button class="row" data-id="a">A4</button>';
     const forced=ids();
     return {immediate,background,forced,windowMs:window.HPRCalmList.windowMs};
