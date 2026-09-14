@@ -50,6 +50,7 @@ jobs:
           node --check hpr/edge/ui/edge-e1e7.js
           node --check hpr/edge/ui/edge-enrich.js
           node --check hpr/edge/ui/edge-traffic-enrich.js
+          node --check hpr/edge/ui/edge-detail-cards.js
           node --check hpr/edge/ui/edge-map-policy.js
           node --check hpr/edge/ui/edge-admin-ui.js
           node --check hpr/edge/ui/edge-benchmark.js
@@ -62,6 +63,9 @@ jobs:
 
       - name: Calm UI + MapLibre expression runtime smoke
         run: node test/edge_calm_ui_runtime_smoke.js
+
+      - name: Selected trace runtime smoke
+        run: node test/edge_history_runtime_smoke.js
 
       - name: Persistent admin CGI smoke
         run: sh test/edge_admin_cgi_smoke.sh
