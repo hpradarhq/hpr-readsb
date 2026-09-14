@@ -18,8 +18,8 @@ Broken UX history: `archive/edge-e1-e7-ux-broken-4.8.4-edge.2`.
 ## Backlog
 
 - [x] G1 Local aircraft rows: no aircraft icon; keep status dot, identity, altitude and speed.
-- [ ] G2 Browser interaction guard: Chromium smoke catches page crash/main-thread lock and validates list open/close, aircraft click/select, detail close and theme toggle.
-- [ ] G3 Selected aircraft map state: selected silhouette only; no selected halo; keep hit target and normal status treatment.
+- [x] G2 Browser interaction guard: Chromium smoke catches page crash/main-thread lock and validates list open/close, aircraft click/select, detail close and theme toggle.
+- [x] G3 Selected aircraft map state: selected silhouette only; no selected halo; keep hit target and normal status treatment.
 - [ ] G4 Calm local list: stable ordering and calm visual refresh while live map remains fast.
 - [ ] G5 Aircraft detail identity: country flag + callsign; no aircraft icon in detail header; no flicker.
 - [ ] G6 Aircraft detail hierarchy: registration/type/country, LIVE/source/squawk, route, operator, airframe, photo, core metrics, lower telemetry.
