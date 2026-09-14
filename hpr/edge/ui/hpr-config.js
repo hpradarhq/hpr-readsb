@@ -15,5 +15,5 @@ if (new URLSearchParams(location.search).get('bench') === '1') {
 }
 document.addEventListener('DOMContentLoaded', () => {
   const build = document.querySelector('.build');
-  if (build) build.textContent = 'FE 4.8.0-edge.1 · E1-E7';
+  if (build) build.textContent = 'FE 4.8.0-edge.2 · E1-E7';
 }, { once: true });
