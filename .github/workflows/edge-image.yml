@@ -44,7 +44,9 @@ jobs:
           node --check hpr/edge/ui/hpr-config.js
           node --check hpr/edge/ui/edge-g3-map.js
           node --check hpr/edge/ui/edge-g4-calm-list.js
+          node --check hpr/edge/ui/edge-g5-detail.js
           node --check test/edge_browser_smoke.spec.js
+          node --check test/edge_g5_detail.spec.js
 
       - name: Gate 1 local aircraft rows
         run: |
@@ -69,13 +71,20 @@ jobs:
           grep -Fq 'const forceUntils=new WeakMap()' hpr/edge/ui/edge-g4-calm-list.js
           grep -Fq "this.id!=='airList'" hpr/edge/ui/edge-g4-calm-list.js
 
+      - name: Gate 5 aircraft detail identity
+        run: |
+          test -s hpr/edge/ui/edge-g5-detail.js
+          grep -Fq 'edge-g5-detail.js' hpr/edge/ui/hpr-config.js
+          grep -Fq "0x888000,0x88ffff,'Viet Nam','vn'" hpr/edge/ui/edge-g5-detail.js
+          ! grep -q 'MutationObserver\|setInterval' hpr/edge/ui/edge-g5-detail.js
+
       - name: Chromium interaction regression
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
         run: |
           google-chrome --version
           npm install --no-save --ignore-scripts @playwright/test@1.55.0
-          npx playwright test test/edge_browser_smoke.spec.js --reporter=line --workers=1
+          npx playwright test test/edge_browser_smoke.spec.js test/edge_g5_detail.spec.js --reporter=line --workers=1
 
       - name: Golden vectors
         run: make hpr-airwire-test DISABLE_INTERACTIVE=yes
