@@ -1,7 +1,7 @@
 /* Native HPR AirWire v1 -> Atlas model.
  * Motion hot path stays binary /ws/air.
  * 0x0A carries DB-backed ICAO type + registration.
- * Slow-changing source/RSSI/geom fields may still be enriched from local readsb JSON.
+ * Slow-changing source/RSSI/geom/db fields may still be enriched from local readsb JSON.
  */
 (()=>{'use strict';
 const POS=0x02,IDENT=0x06,META=0x0A,POS_SIZE=20,IDENT_SIZE=15,META_SIZE=20,STALE_MS=120000,META_MS=3000;
@@ -40,7 +40,7 @@ function decodeMetadata(d,o,now){
 function decode(buffer){const d=new DataView(buffer);let o=0;const now=Date.now();while(o<d.byteLength){const t=d.getUint8(o),n=t===POS?POS_SIZE:t===IDENT?IDENT_SIZE:t===META?META_SIZE:0;if(!n||o+n>d.byteLength)break;if(t===POS)decodePosition(d,o,now);else if(t===IDENT)decodeIdentity(d,o,now);else decodeMetadata(d,o,now);totalFrames++;o+=n}}
 function enrich(x){
   const id=clean(x?.hex)?.toLowerCase();if(!id||id.startsWith('~'))return;const a=aircraft(id),now=Date.now();
-  a.callsign=clean(x.flight)||a.callsign;a.registration=a.registration||clean(x.r);a.typeCode=a.typeCode||clean(x.t)?.toUpperCase()||null;a.typeDescription=clean(x.desc);a.categoryCode=clean(x.category)?.toUpperCase()||a.categoryCode;a.squawk=clean(x.squawk)||a.squawk;a.emergency=clean(x.emergency);a.rssiDbfs=Number.isFinite(Number(x.rssi))?Number(x.rssi):a.rssiDbfs;a.messageCount=Number.isFinite(Number(x.messages))?Number(x.messages):a.messageCount;
+  a.callsign=clean(x.flight)||a.callsign;a.registration=a.registration||clean(x.r);a.typeCode=a.typeCode||clean(x.t)?.toUpperCase()||null;a.typeDescription=clean(x.desc);a.categoryCode=clean(x.category)?.toUpperCase()||a.categoryCode;a.squawk=clean(x.squawk)||a.squawk;a.emergency=clean(x.emergency);a.rssiDbfs=Number.isFinite(Number(x.rssi))?Number(x.rssi):a.rssiDbfs;a.messageCount=Number.isFinite(Number(x.messages))?Number(x.messages):a.messageCount;a.dbFlags=Number.isFinite(Number(x.dbFlags))?Number(x.dbFlags):a.dbFlags;
   const src=SRC[String(x.type||'').toLowerCase()]||[13,'Unknown'];a.sourceClass=src[0];a.source=src[1];a.isMlat=src[0]===5||(Array.isArray(x.mlat)&&x.mlat.includes('lat'));a.isGround=x.alt_baro==='ground'||x.ground===true;a.isAlert=!!x.alert;a.isSpi=!!x.spi;a.isNonIcao=String(x.hex||'').startsWith('~');
   if(Number.isFinite(Number(x.alt_geom)))a.geometricAltitudeFt=Number(x.alt_geom);if(Number.isFinite(Number(x.geom_rate)))a.geometricRateFpm=Number(x.geom_rate);if(Number.isFinite(Number(x.baro_rate)))a.barometricRateFpm=Number(x.baro_rate);
   if(!a.hasPosition&&Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lon))){a.latitude=Number(x.lat);a.longitude=Number(x.lon);a.coordinates=[a.longitude,a.latitude];a.hasPosition=true;a.lastPositionMs=now-(Number(x.seen_pos)||0)*1000}
