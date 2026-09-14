@@ -44,6 +44,7 @@ jobs:
           node --check hpr/edge/ui/airwire-adapter.js
           node --check hpr/edge/ui/aircraft-renderer.js
           node --check hpr/edge/ui/edge-history.js
+          node --check hpr/edge/ui/edge-trace-policy.js
           node --check hpr/edge/ui/edge-ui-patch.js
           node --check hpr/edge/ui/edge-calm-ui.js
           node --check hpr/edge/ui/edge-ops.js
