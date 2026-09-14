@@ -1,6 +1,6 @@
 /* Edge-only UI polish.
- * <=400 aircraft: no clustering/LOD. Suppress marker halos, resolve ICAO-country
- * and render bundled lipis/flag-icons SVG only in detail; keep LOCAL AIRCRAFT calm.
+ * <=400 aircraft: no clustering/LOD. Suppress marker halos, resolve ICAO-country,
+ * render bundled lipis/flag-icons in the detail head, and lazy-load one photo.
  */
 (()=>{'use strict';
 if(window.maplibregl?.Map?.prototype){const addLayer=window.maplibregl.Map.prototype.addLayer;window.maplibregl.Map.prototype.addLayer=function(layer,beforeId){if(layer?.id==='aircraft-halo')return this;return addLayer.call(this,layer,beforeId)}}
@@ -12,19 +12,37 @@ const R=[
 [0xa00000,0xafffff,'United States','us'],[0xc00000,0xc3ffff,'Canada','ca'],[0xc80000,0xc87fff,'New Zealand','nz']];
 function country(hex){const n=parseInt(String(hex||'').replace(/^~/,''),16);if(!Number.isFinite(n))return null;const x=R.find(r=>n>=r[0]&&n<=r[1]);return x?{name:x[2],code:x[3],flag:'',flagUrl:`/flags/4x3/${x[3]}.svg`}:null}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function photo(hex){const key=`hprPhoto:${hex}`;try{const c=sessionStorage.getItem(key);if(c)return JSON.parse(c)}catch(_){}let value=null;try{const r=await fetch(`/api/photo/hex/${hex}`,{cache:'force-cache'});if(r.ok){const j=await r.json(),p=j?.photos?.[0];if(p?.thumbnail?.src)value={src:p.thumbnail.src,link:p.link||`https://www.planespotters.net/hex/${hex.toUpperCase()}`,photographer:p.photographer||'Planespotters.net'}}}catch(_){}try{sessionStorage.setItem(key,JSON.stringify(value))}catch(_){}return value}
+const photoPromises=new Map();
+async function photo(hex){
+  const key=`hprPhoto:${hex}`;try{const c=sessionStorage.getItem(key);if(c)return JSON.parse(c)}catch(_){}
+  if(photoPromises.has(hex))return photoPromises.get(hex);
+  const p=(async()=>{let value=null;try{const r=await fetch(`/api/photo/hex/${hex}`,{cache:'force-cache'});if(r.ok){const j=await r.json(),x=j?.photos?.[0];if(x?.thumbnail?.src)value={src:x.thumbnail.src,link:x.link||`https://www.planespotters.net/hex/${hex.toUpperCase()}`,photographer:x.photographer||'Planespotters.net'}}}catch(_){}try{sessionStorage.setItem(key,JSON.stringify(value))}catch(_){}return value})();
+  photoPromises.set(hex,p);return p;
+}
 function findIcao(detail){for(const kv of detail.querySelectorAll('.kv')){const s=[...kv.children];for(let i=0;i<s.length-1;i+=2)if(s[i].textContent.trim()==='ICAO')return s[i+1].textContent.trim().toLowerCase()}return null}
-function addFlag(parent,c){if(!parent||!c||parent.querySelector?.('.hpr-country-flag'))return;const img=document.createElement('img');img.className='hpr-country-flag';img.src=c.flagUrl;img.alt=c.name;img.title=c.name;img.loading='lazy';parent.prepend(img)}
-async function decorateDetail(){
-  const detail=document.querySelector('#detailBody');if(!detail)return;const hex=findIcao(detail);if(!/^[0-9a-f]{6}$/.test(hex||''))return;if(detail.dataset.hprDecorated===hex)return;detail.dataset.hprDecorated=hex;
-  const c=country(hex),title=detail.querySelector('.detail-title b');if(c&&title){addFlag(title,c);title.dataset.flagged='1'}
-  const identity=[...detail.querySelectorAll('.section')].find(s=>s.querySelector('h3')?.textContent.trim()==='Identity'),kv=identity?.querySelector('.kv');
-  if(c&&kv){const a=document.createElement('span'),b=document.createElement('span');a.textContent='Country';b.className='hpr-country-value';addFlag(b,c);b.append(document.createTextNode(c.name));kv.append(a,b)}
-  const p=await photo(hex);if(!p||detail.dataset.hprDecorated!==hex)return;const metric=detail.querySelector('.metric-grid');if(!metric)return;const card=document.createElement('div');card.className='hpr-photo';card.innerHTML=`<a href="${esc(p.link)}" target="_blank" rel="noopener"><img src="${esc(p.src)}" alt="Aircraft ${hex.toUpperCase()}" loading="lazy"></a><div>© ${esc(p.photographer)} · Planespotters.net</div>`;metric.before(card)
+function transformDetailHtml(html){
+  if(typeof html!=='string'||!html.includes('class="detail-head"')||!html.includes('<span>ICAO</span>'))return html;
+  const m=html.match(/<span>ICAO<\/span><span>([0-9A-Fa-f]{6})<\/span>/);if(!m)return html;
+  const hex=m[1].toLowerCase(),c=country(hex);
+  const head=c?`<span class="plane-big hpr-flag-head" title="${esc(c.name)}"><img src="${esc(c.flagUrl)}" alt="${esc(c.name)}"></span>`:`<span class="plane-big hpr-flag-head hpr-flag-missing" title="Country unavailable">—</span>`;
+  html=html.replace(/<span class="plane-big"[^>]*>[\s\S]*?<\/span>/,head);
+  if(c)html=html.replace(/(<span class="detail-title"><b>[\s\S]*?<\/b><small>)([\s\S]*?)(<\/small><\/span>)/,(_,a,b,z)=>`${a}${b}${b.includes(c.name)?'':` · ${esc(c.name)}`}${z}`);
+  return html;
+}
+function installStableDetailHead(){
+  const detail=document.querySelector('#detailBody');if(!detail||detail.__hprStableFlag)return;detail.__hprStableFlag=true;
+  const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');if(!d?.get||!d?.set)return;
+  try{Object.defineProperty(detail,'innerHTML',{configurable:true,get(){return d.get.call(this)},set(v){return d.set.call(this,transformDetailHtml(v))}})}catch(_){}
+}
+async function decoratePhoto(){
+  const detail=document.querySelector('#detailBody');if(!detail)return;const hex=findIcao(detail);if(!/^[0-9a-f]{6}$/.test(hex||''))return;if(detail.querySelector(`.hpr-photo[data-icao="${hex}"]`))return;
+  const p=await photo(hex);if(!p||findIcao(detail)!==hex||detail.querySelector(`.hpr-photo[data-icao="${hex}"]`))return;
+  const metric=detail.querySelector('.metric-grid');if(!metric)return;const card=document.createElement('div');card.className='hpr-photo';card.dataset.icao=hex;card.innerHTML=`<a href="${esc(p.link)}" target="_blank" rel="noopener"><img src="${esc(p.src)}" alt="Aircraft ${hex.toUpperCase()}" loading="lazy"></a><div>© ${esc(p.photographer)} · Planespotters.net</div>`;metric.after(card)
 }
 function polishCopy(){document.querySelectorAll('.setting-row small').forEach(el=>{if(el.textContent.includes('status halos'))el.textContent='Symbols and hit targets'})}
-function decorate(){polishCopy();decorateDetail()}
-const style=document.createElement('style');style.textContent='.hpr-photo{border-bottom:1px solid var(--border);background:var(--s2)}.hpr-photo img{display:block;width:100%;max-height:190px;object-fit:cover}.hpr-photo div{padding:5px 9px;color:var(--muted);font-size:9px}.hpr-photo a{display:block}.detail-title b{display:flex!important;align-items:center;gap:6px}.hpr-country-flag{width:20px!important;height:15px!important;object-fit:cover!important;border-radius:2px;flex:0 0 auto}.hpr-country-value{display:flex;justify-content:flex-end;align-items:center;gap:6px}';document.head.appendChild(style);
-document.addEventListener('DOMContentLoaded',()=>{decorate();new MutationObserver(()=>queueMicrotask(decorate)).observe(document.body,{childList:true,subtree:true})});
-window.HPREdgeMeta=Object.freeze({country});
+function decorate(){polishCopy();decoratePhoto()}
+const style=document.createElement('style');style.textContent=`
+.hpr-flag-head{background:transparent!important;border:1px solid var(--border);overflow:hidden;padding:0!important}.hpr-flag-head img{display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;transform:none!important;filter:none!important}.hpr-flag-missing{font-size:18px;color:var(--muted);background:var(--s2)!important}.hpr-photo{border-bottom:1px solid var(--border);background:var(--s2)}.hpr-photo img{display:block;width:100%;max-height:190px;object-fit:cover}.hpr-photo div{padding:5px 9px;color:var(--muted);font-size:9px}.hpr-photo a{display:block}.detail-title b{display:flex!important;align-items:center;gap:6px}`;document.head.appendChild(style);
+document.addEventListener('DOMContentLoaded',()=>{installStableDetailHead();decorate();new MutationObserver(()=>queueMicrotask(decorate)).observe(document.body,{childList:true,subtree:true})});
+window.HPREdgeMeta=Object.freeze({country,transformDetailHtml});
 })();
