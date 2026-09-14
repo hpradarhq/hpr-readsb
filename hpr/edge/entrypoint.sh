@@ -31,6 +31,7 @@ set -- /usr/local/bin/readsb \
   --write-json-globe-index \
   --json-trace-interval="${READSB_TRACE_INTERVAL:-1}" \
   --db-file=/usr/local/share/hpr-readsb/aircraft.csv.gz \
+  --db-file-lt \
   --net-ro-port=30002 \
   --net-sbs-port=30003 \
   --net-beast-reduce-out-port=30004 \
