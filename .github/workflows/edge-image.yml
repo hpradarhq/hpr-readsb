@@ -6,6 +6,7 @@ on:
       - dev
       - "feat/edge-airwire-bin-*"
       - feat/edge-atlas-v4.7-native-airwire-v2
+      - feat/edge-e1-e7-ux
     tags:
       - "edge-v*"
     paths-ignore:
@@ -83,6 +84,7 @@ jobs:
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=edge-test,enable=${{ startsWith(github.ref, 'refs/heads/feat/edge-airwire-bin-') }}
             type=raw,value=edge-native,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-native-airwire-v2' }}
+            type=raw,value=edge-ux,enable=${{ github.ref == 'refs/heads/feat/edge-e1-e7-ux' }}
             type=ref,event=tag
             type=ref,event=pr
             type=sha,prefix=edge-,format=long
