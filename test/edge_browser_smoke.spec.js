@@ -7,6 +7,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../hpr/edge/ui');
 
+test.setTimeout(45000);
+
 function airwireFrame() {
   const out = Buffer.alloc(35);
   const id = 0x888001;
@@ -137,6 +139,25 @@ test('Atlas Edge remains clickable and responsive', async () => {
   await expect.poll(() => page.locator('html').getAttribute('data-theme')).not.toBe(themeBefore);
   await row.click({timeout:1500});
   await expect(page.locator('#detail')).toHaveClass(/open/);
+
+  const calm = await page.evaluate(async () => {
+    const el=document.createElement('div');el.id='airList';
+    const ids=()=>[...el.querySelectorAll('.row')].map(row=>row.dataset.id);
+    el.innerHTML='<button class="row" data-id="a">A</button><button class="row" data-id="b">B</button>';
+    el.innerHTML='<button class="row" data-id="b">B2</button><button class="row" data-id="a">A2</button>';
+    const immediate=ids();
+    await new Promise(resolve=>setTimeout(resolve,window.HPRCalmList.windowMs+80));
+    el.innerHTML='<button class="row" data-id="b">B3</button><button class="row" data-id="a">A3</button>';
+    const background=ids();
+    window.HPRCalmList.force();
+    el.innerHTML='<button class="row" data-id="b">B4</button><button class="row" data-id="a">A4</button>';
+    const forced=ids();
+    return {immediate,background,forced,windowMs:window.HPRCalmList.windowMs};
+  });
+  expect(calm.windowMs).toBe(2500);
+  expect(calm.immediate).toEqual(['a','b']);
+  expect(calm.background).toEqual(['a','b']);
+  expect(calm.forced).toEqual(['b','a']);
 
   const responsive = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(true))));
   expect(responsive).toBe(true);
