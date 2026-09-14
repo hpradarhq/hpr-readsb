@@ -106,6 +106,7 @@ def parse_airwire(payload):
     i = 0
     pos = set()
     ident = set()
+    meta = set()
     while i < len(payload):
         t = payload[i]
         if t == 0x02:
@@ -120,25 +121,32 @@ def parse_airwire(payload):
             icao = payload[i+1] | payload[i+2] << 8 | payload[i+3] << 16
             ident.add(icao)
             i += 15
+        elif t == 0x0A:
+            if i + 20 > len(payload):
+                raise RuntimeError("truncated 0x0a")
+            icao = payload[i+1] | payload[i+2] << 8 | payload[i+3] << 16
+            meta.add(icao)
+            i += 20
         else:
             raise RuntimeError(f"unknown frame type 0x{t:02x} at {i}")
-    return pos, ident
+    return pos, ident, meta
 
 
 def snapshot(s, min_pos):
     deadline = time.time() + 6
     best_pos = set()
     best_ident = set()
+    best_meta = set()
     while time.time() < deadline:
         opcode, payload = ws_recv(s)
         if opcode != 2:
             continue
-        pos, ident = parse_airwire(payload)
+        pos, ident, meta = parse_airwire(payload)
         if len(pos) > len(best_pos):
-            best_pos, best_ident = pos, ident
+            best_pos, best_ident, best_meta = pos, ident, meta
         if len(pos) >= min_pos:
-            return pos, ident
-    raise RuntimeError(f"snapshot only had {len(best_pos)} positions / {len(best_ident)} identities")
+            return pos, ident, meta
+    raise RuntimeError(f"snapshot only had {len(best_pos)} positions / {len(best_ident)} identities / {len(best_meta)} metadata")
 
 
 def rss_kib(pid):
@@ -154,9 +162,6 @@ def main():
     ap.add_argument("--readsb", default="./readsb")
     args = ap.parse_args()
     with tempfile.TemporaryDirectory(prefix="hpr-airwire-") as outdir:
-        # SBS is only the synthetic transport here; it does not carry ADS-B CPR
-        # reliability evidence. json-reliable=0 is test-local so the injected
-        # lat/lon enters readsb's reliable projection without changing product defaults.
         proc = subprocess.Popen([
             args.readsb, "--net", "--net-only", "--quiet", "--json-reliable=0",
             f"--net-sbs-in-port={SBS_PORT}",
@@ -169,30 +174,29 @@ def main():
             time.sleep(1.0)
 
             c = ws_connect()
-            pos, ident = snapshot(c, 390)
+            pos, ident, meta = snapshot(c, 390)
             if len(ident) < 390:
                 raise RuntimeError(f"identity snapshot too small: {len(ident)}")
-            print(f"snapshot: {len(pos)} position, {len(ident)} identity")
+            if len(meta) < 390:
+                raise RuntimeError(f"metadata snapshot too small: {len(meta)}")
+            print(f"snapshot: {len(pos)} position, {len(ident)} identity, {len(meta)} metadata")
 
             ws_text(c, "box:10.0,10.7,100.0,100.7,8")
             opcode, payload = ws_recv(c)
             if opcode != 2:
                 raise RuntimeError("bbox response not binary")
-            bpos, _ = parse_airwire(payload)
+            bpos, _, _ = parse_airwire(payload)
             if not (0 < len(bpos) < len(pos)):
                 raise RuntimeError(f"bbox filtering ineffective: {len(bpos)} of {len(pos)}")
             print(f"bbox: {len(bpos)} position")
 
-            # About 15 m diagonal near this latitude after a one-second dwell:
-            # physically plausible for the synthetic speeds, while changing the
-            # scaled lat/lon bytes in 0x02 by ~60 integer units.
             feed_all(pos_bump=0.0001, repeats=2)
             dpos = set()
             deadline = time.time() + 4
             while time.time() < deadline and len(dpos) < 5:
                 op, p = ws_recv(c)
                 if op == 2:
-                    pp, _ = parse_airwire(p)
+                    pp, _, _ = parse_airwire(p)
                     dpos |= pp
             if not dpos:
                 raise RuntimeError("no live position/motion delta received")
@@ -209,9 +213,6 @@ def main():
                 snapshot(x, 390)
             print("4 clients: PASS")
 
-            # Keep one browser unread while repeatedly changing identity/status.
-            # This stresses bounded client handling without relying on implausible
-            # aircraft movement in the injector.
             slow = ws_connect()
             rss0 = rss_kib(proc.pid)
             for wave in range(1, 13):
