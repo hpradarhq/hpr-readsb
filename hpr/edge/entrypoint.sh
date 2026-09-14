@@ -30,6 +30,8 @@ set -- /usr/local/bin/readsb \
   --quiet \
   --write-json=/run/readsb \
   --write-json-every="${READSB_JSON_INTERVAL:-1}" \
+  --write-json-globe-index \
+  --json-trace-interval="${READSB_TRACE_INTERVAL:-1}" \
   --db-file=/usr/local/share/hpr-readsb/aircraft.csv.gz \
   --net-ro-port=30002 \
   --net-sbs-port=30003 \
