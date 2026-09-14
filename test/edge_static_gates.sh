@@ -55,3 +55,18 @@ grep -Fq 'edge-g8-station.js' hpr/edge/ui/hpr-config.js
 grep -Fq 'data-hpr-g8="1"' hpr/edge/ui/edge-g8-station.js
 grep -Fq 'AirWire frames' hpr/edge/ui/edge-g8-station.js
 ! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g8-station.js
+
+# G9 selected segmented trace
+test -s hpr/edge/ui/edge-g9-trace.js
+grep -Fq 'edge-g9-trace.js' hpr/edge/ui/hpr-config.js
+grep -Fq 'MAX_TRACE_MIN=90' hpr/edge/ui/edge-g9-trace.js
+grep -Fq 'MAX_GAP_SEC=180' hpr/edge/ui/edge-g9-trace.js
+grep -Fq 'MAX_IMPLIED_KT=950' hpr/edge/ui/edge-g9-trace.js
+grep -Fq "traceUrl(id,'recent')" hpr/edge/ui/edge-g9-trace.js
+grep -Fq "traceUrl(id,'full')" hpr/edge/ui/edge-g9-trace.js
+grep -Fq "before=map.getLayer('aircraft-symbol')?'aircraft-symbol'" hpr/edge/ui/edge-g9-trace.js
+! grep -qi 'MutationObserver\|setInterval\|allTracks\|all-tracks\|replay' hpr/edge/ui/edge-g9-trace.js
+grep -Fq -- '--write-json-globe-index' hpr/edge/entrypoint.sh
+grep -Fq -- '--json-trace-interval=' hpr/edge/entrypoint.sh
+grep -Fq 'location /data/traces/' hpr/edge/nginx.conf
+grep -Fq 'alias /run/readsb/traces/' hpr/edge/nginx.conf
