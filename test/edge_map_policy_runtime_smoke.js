@@ -16,9 +16,12 @@ const map={
 };
 const window={HPREdgeMap:map};
 const document={documentElement:{dataset:{theme:'dark'}}};
-const context={window,document,console,Object,Array,Map,JSON,setInterval:fn=>{fn();return 1},clearInterval:()=>{}};
+let timerCb=null;
+const context={window,document,console,Object,Array,Map,JSON,setInterval:fn=>{timerCb=fn;return 1},clearInterval:()=>{}};
 vm.createContext(context);
 vm.runInContext(code,context,{filename:'edge-map-policy.js'});
+assert.strictEqual(typeof timerCb,'function','map bind timer missing');
+timerCb();
 assert(window.HPREdgeMapPolicy,'map policy export missing');
 assert.strictEqual(typeof window.HPREdgeMapPolicy.apply,'function');
 assert.strictEqual(calls.filters.length,1,'place-city filter not applied');
