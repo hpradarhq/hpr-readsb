@@ -11,6 +11,7 @@ document.write('<script src="/edge-ops.js"><\/script>');
 document.write('<script src="/edge-e1e7.js"><\/script>');
 document.write('<script src="/edge-enrich.js"><\/script>');
 document.write('<script src="/edge-traffic-enrich.js"><\/script>');
+document.write('<script src="/edge-detail-cards.js"><\/script>');
 document.write('<script src="/edge-map-policy.js"><\/script>');
 document.write('<script src="/edge-admin-ui.js"><\/script>');
 if (new URLSearchParams(location.search).get('bench') === '1') {
@@ -18,5 +19,5 @@ if (new URLSearchParams(location.search).get('bench') === '1') {
 }
 document.addEventListener('DOMContentLoaded', () => {
   const build = document.querySelector('.build');
-  if (build) build.textContent = 'FE 4.8.3-edge.2 · E1-E7+';
+  if (build) build.textContent = 'FE 4.8.4-edge.1 · E7+';
 }, { once: true });
