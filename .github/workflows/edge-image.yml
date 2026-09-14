@@ -63,8 +63,10 @@ jobs:
       - name: Synthetic 400-aircraft websocket load
         run: python3 test/hpr_airwire_ws_synthetic.py --readsb ./readsb
 
-      - name: E7 comparator syntax
-        run: python3 -m py_compile test/e7_compare.py
+      - name: E7 comparator smoke
+        run: |
+          python3 -m py_compile test/e7_compare.py
+          PYTHONPATH=test python3 test/e7_compare_smoke.py
 
   build:
     name: Build arm64 + armv7
