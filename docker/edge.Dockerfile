@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.8.3-edge.1
-ARG FE_BUILD=260914.8
+ARG FE_VERSION=4.8.3-edge.2
+ARG FE_BUILD=260914.9
 
 FROM debian:bookworm-slim AS builder
 
@@ -32,7 +32,8 @@ RUN make clean \
        -O /tmp/flag-icons.tar.gz \
        https://github.com/lipis/flag-icons/archive/refs/tags/v7.5.0.tar.gz \
     && tar -xzf /tmp/flag-icons.tar.gz -C /tmp \
-    && cp /tmp/flag-icons-7.5.0/flags/4x3/*.svg /out/flags/4x3/
+    && cp /tmp/flag-icons-7.5.0/flags/4x3/*.svg /out/flags/4x3/ \
+    && cp /tmp/flag-icons-7.5.0/LICENSE /out/flags/LICENSE
 
 FROM debian:bookworm-slim
 
@@ -55,7 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /out/readsb /usr/local/bin/readsb
 COPY --from=builder /out/aircraft.csv.gz /usr/local/share/hpr-readsb/aircraft.csv.gz
-COPY --from=builder /out/flags/4x3/ /usr/share/nginx/html/flags/4x3/
+COPY --from=builder /out/flags/ /usr/share/nginx/html/flags/
 COPY hpr/edge/nginx.conf /etc/nginx/nginx.conf
 COPY hpr/edge/entrypoint.sh /usr/local/bin/hpr-edge
 COPY hpr/edge/admin-v2.cgi /usr/local/lib/hpr-edge/www/cgi-bin/admin
@@ -66,7 +67,7 @@ RUN sed -i \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
       -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n<script src="/edge-ui-patch.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"readsb-real","marker":"cf-acicon","flags":"lipis-flag-icons-v7.5.0","photo":"planespotters-lazy","traffic_api":"traffic.hpradar.com-selected-only","table":"stable-2.5s","settings":"persistent-pin6-live","ux":"e1-e7-fr24-airnav","map_labels":"vi-hoangsa-truongsa"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"readsb-real","marker":"cf-acicon","flags":"lipis-flag-icons-v7.5.0","photo":"planespotters-lazy","traffic_api":"traffic.hpradar.com-selected-only","table":"stable-2.5s","settings":"persistent-pin6-live","ux":"e1-e7-fr24-airnav","map_labels":"vi-hoangsa-truongsa-selfheal"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge /usr/local/lib/hpr-edge/www/cgi-bin/admin
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
@@ -80,7 +81,7 @@ LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       hpradar.table_refresh="2.5s-stable" \
       hpradar.settings="persistent-pin6-live" \
       hpradar.ux="e1-e7-fr24-airnav" \
-      hpradar.map_labels="vi-hoangsa-truongsa"
+      hpradar.map_labels="vi-hoangsa-truongsa-selfheal"
 
 ENV READSB_JSON_INTERVAL=1 \
     READSB_TRACE_INTERVAL=1 \
