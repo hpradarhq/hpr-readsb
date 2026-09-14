@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.8.2-edge.1
-ARG FE_BUILD=260914.7
+ARG FE_VERSION=4.8.3-edge.1
+ARG FE_BUILD=260914.8
 
 FROM debian:bookworm-slim AS builder
 
@@ -23,11 +23,16 @@ RUN make clean \
     && make -j"$(nproc)" readsb RTLSDR=yes DISABLE_INTERACTIVE=yes OPTIMIZE="-O2" \
     && make hpr-airwire-test DISABLE_INTERACTIVE=yes \
     && strip readsb \
-    && mkdir -p /out \
+    && mkdir -p /out /out/flags/4x3 \
     && cp readsb /out/readsb \
     && wget --timeout=20 --tries=4 --retry-connrefused \
        -O /out/aircraft.csv.gz \
-       https://raw.githubusercontent.com/wiedehopf/tar1090-db/csv/aircraft.csv.gz
+       https://raw.githubusercontent.com/wiedehopf/tar1090-db/csv/aircraft.csv.gz \
+    && wget --timeout=20 --tries=4 --retry-connrefused \
+       -O /tmp/flag-icons.tar.gz \
+       https://github.com/lipis/flag-icons/archive/refs/tags/v7.5.0.tar.gz \
+    && tar -xzf /tmp/flag-icons.tar.gz -C /tmp \
+    && cp /tmp/flag-icons-7.5.0/flags/4x3/*.svg /out/flags/4x3/
 
 FROM debian:bookworm-slim
 
@@ -46,13 +51,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libzstd1 \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default \
-    && mkdir -p /run/readsb /usr/local/share/hpr-readsb /usr/share/nginx/html /usr/local/lib/hpr-edge/www/cgi-bin /data/hpr-edge
+    && mkdir -p /run/readsb /usr/local/share/hpr-readsb /usr/share/nginx/html/flags/4x3 /usr/local/lib/hpr-edge/www/cgi-bin /data/hpr-edge
 
 COPY --from=builder /out/readsb /usr/local/bin/readsb
 COPY --from=builder /out/aircraft.csv.gz /usr/local/share/hpr-readsb/aircraft.csv.gz
+COPY --from=builder /out/flags/4x3/ /usr/share/nginx/html/flags/4x3/
 COPY hpr/edge/nginx.conf /etc/nginx/nginx.conf
 COPY hpr/edge/entrypoint.sh /usr/local/bin/hpr-edge
-COPY hpr/edge/admin.cgi /usr/local/lib/hpr-edge/www/cgi-bin/admin
+COPY hpr/edge/admin-v2.cgi /usr/local/lib/hpr-edge/www/cgi-bin/admin
 COPY hpr/edge/ui/ /usr/share/nginx/html/
 
 RUN sed -i \
@@ -60,7 +66,7 @@ RUN sed -i \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
       -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n<script src="/edge-ui-patch.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"readsb-real","marker":"cf-acicon","flags":"icao24-local","photo":"planespotters-lazy","traffic_api":"traffic.hpradar.com-selected-only","table":"stable-2.5s","settings":"persistent-pin6-live","ux":"e1-e7-fr24-airnav","map_labels":"vi-hoangsa-truongsa"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","meta":"0x0a-type-reg","trace":"readsb-real","marker":"cf-acicon","flags":"lipis-flag-icons-v7.5.0","photo":"planespotters-lazy","traffic_api":"traffic.hpradar.com-selected-only","table":"stable-2.5s","settings":"persistent-pin6-live","ux":"e1-e7-fr24-airnav","map_labels":"vi-hoangsa-truongsa"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge /usr/local/lib/hpr-edge/www/cgi-bin/admin
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
@@ -69,6 +75,7 @@ LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       hpradar.airwire="binary-v1+meta0a" \
       hpradar.trace="readsb-real" \
       hpradar.marker="cf-acicon" \
+      hpradar.flags="lipis-flag-icons-v7.5.0" \
       hpradar.traffic_enrichment="selected-only" \
       hpradar.table_refresh="2.5s-stable" \
       hpradar.settings="persistent-pin6-live" \
