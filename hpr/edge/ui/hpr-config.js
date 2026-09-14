@@ -12,10 +12,11 @@ document.write('<script src="/edge-e1e7.js"><\/script>');
 document.write('<script src="/edge-enrich.js"><\/script>');
 document.write('<script src="/edge-traffic-enrich.js"><\/script>');
 document.write('<script src="/edge-map-policy.js"><\/script>');
+document.write('<script src="/edge-admin-ui.js"><\/script>');
 if (new URLSearchParams(location.search).get('bench') === '1') {
   document.write('<script src="/edge-benchmark.js"><\/script>');
 }
 document.addEventListener('DOMContentLoaded', () => {
   const build = document.querySelector('.build');
-  if (build) build.textContent = 'FE 4.8.1-edge.1 · E1-E7';
+  if (build) build.textContent = 'FE 4.8.2-edge.1 · E1-E7';
 }, { once: true });
