@@ -15,18 +15,20 @@ checks = {
     'live_transport': has('hpr/edge/ui/airwire-adapter.js', 'new WebSocket', '0x0A', "binaryType='arraybuffer'")
                       and has('hpr/airwire/AIRWIRE-BINARY-V1.md', '/ws/air', '0x0A'),
     'map_visual': has('hpr/edge/ui/aircraft-renderer.js', 'hpr-cf-fe', 'No clustering', 'no LOD')
-                  and has('hpr/edge/ui/edge-ui-patch.js', "layer?.id==='aircraft-halo'", 'Planespotters.net', '/flags/4x3/')
+                  and has('hpr/edge/ui/edge-ui-patch.js', "layer?.id==='aircraft-halo'", 'Planespotters.net', '/flags/4x3/', 'transformDetailHtml')
                   and has('hpr/edge/ui/edge-calm-ui.js', "layer?.id==='aircraft-selected-emphasis'", "'icon-size':['interpolate'"),
     'search_filter_sort': has('hpr/edge/ui/edge-ops.js', 'hprType', 'hprAltMin', 'hprSource', 'hprSort')
                           and has('hpr/edge/ui/edge-e1e7.js', 'hprCountry', 'hprSquawk', 'military', 'Emergency'),
-    'detail_enrichment': has('hpr/edge/ui/edge-ui-patch.js', 'Country', '/api/photo/hex/', 'hpr-country-flag')
+    'detail_enrichment': has('hpr/edge/ui/edge-ui-patch.js', '/api/photo/hex/', '/flags/4x3/', 'hpr-flag-head')
                          and has('hpr/edge/ui/airwire-adapter.js', 'typeCode', 'registration')
-                         and has('hpr/edge/ui/edge-e1e7.js', 'Follow', 'Trace', 'Replay'),
-    'tracks_history': has('hpr/edge/ui/edge-history.js', 'trace_${kind}_', 'hprTimeline', 'hprTraceGraph', 'hpr:history:replay')
+                         and has('hpr/edge/ui/edge-detail-cards.js', 'hpr-airnav-detail', 'hpr-fr24-station')
+                         and has('hpr/edge/ui/edge-traffic-enrich.js', 'hpr-route', 'Operator', 'Aircraft')
+                         and has('hpr/edge/ui/edge-e1e7.js', 'Follow', 'Replay'),
+    'tracks_history': has('hpr/edge/ui/edge-history.js', 'trace_${kind}_', 'hprTimeline', 'traceVisible=true', 'hpr:history:replay')
                       and has('hpr/edge/ui/edge-ops.js', 'hpr-all-tracks', 'trace_recent_'),
     'coverage': has('hpr/edge/ui/edge-ops.js', 'hpr-range-rings', 'outline.json', 'actualRange'),
     'station_ops': has('hpr/edge/ui/edge-ops.js', 'EDGE HEALTH', 'AirWire', 'Dropped', 'Uptime')
-                   and has('hpr/edge/ui/edge-e1e7.js', 'Tracked', 'edgeCapacity'),
+                   and has('hpr/edge/ui/edge-detail-cards.js', 'STATION', 'Coordinates', 'AirWire frames'),
     'mobile': has('hpr/edge/ui/index.html', '@media(max-width:680px)', 'compositionMode')
               and has('hpr/edge/ui/edge-history.js', '@media(max-width:680px)'),
     'deployment': has('docker/edge.Dockerfile', 'ARG FE_VERSION=', 'readsb', 'nginx', 'hpr-edge')
@@ -35,7 +37,7 @@ checks = {
                     and has('test/e7_compare.py', 'COMPOSITE', 'target >=130'),
 }
 
-# Static contract score only. This is NOT the real E7 result; real E7 requires
+# Static contract only. This is NOT the real E7 result; real E7 requires
 # same-Pi comparative exports and test/e7_compare.py.
 weights = {
     'live_transport': 25,
