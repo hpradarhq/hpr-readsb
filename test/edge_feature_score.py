@@ -14,7 +14,7 @@ def has(path, *tokens):
 checks = {
     'live_transport': has('hpr/edge/ui/airwire-adapter.js', 'new WebSocket', '0x0A', "binaryType='arraybuffer'")
                       and has('hpr/airwire/AIRWIRE-BINARY-V1.md', '/ws/air', '0x0A'),
-    'map_visual': has('hpr/edge/ui/aircraft-renderer.js', 'cf-fe', 'No clustering', 'No LOD')
+    'map_visual': has('hpr/edge/ui/aircraft-renderer.js', 'hpr-cf-fe', 'No clustering', 'no LOD')
                   and has('hpr/edge/ui/edge-ui-patch.js', 'Suppress the green/aging/stale ring', 'Planespotters.net')
                   and has('hpr/edge/ui/edge-e1e7.js', 'aircraft-selected-emphasis'),
     'search_filter_sort': has('hpr/edge/ui/edge-ops.js', 'hprType', 'hprAltMin', 'hprSource', 'hprSort')
