@@ -22,9 +22,9 @@ function ensure(map){
     if(src?.setData)src.setData(DATA);else map.addSource(SOURCE_ID,{type:'geojson',data:DATA});
     if(!map.getLayer(LAYER_ID)){
       const dark=document.documentElement.dataset.theme==='dark';
-      const layer={id:LAYER_ID,type:'symbol',source:SOURCE_ID,minzoom:3,maxzoom:16,
-        layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],3,12,6,16,10,20],'text-letter-spacing':0.08,'text-allow-overlap':true,'text-ignore-placement':true,'text-optional':false},
-        paint:{'text-color':dark?'#f3f8ff':'#10272f','text-halo-color':dark?'#07121e':'#fffef9','text-halo-width':2,'text-halo-blur':0.4}};
+      const layer={id:LAYER_ID,type:'symbol',source:SOURCE_ID,minzoom:4,maxzoom:14,
+        layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],4,9,9,12],'text-letter-spacing':0.05,'text-transform':'uppercase','text-allow-overlap':true,'text-ignore-placement':true,'text-optional':false},
+        paint:{'text-color':dark?'#9fb1c8':'#3a5160','text-halo-color':dark?'#0a1018':'#ffffff','text-halo-width':1.2,'text-halo-blur':0.2,'text-opacity':.88}};
       const before=map.getLayer('aircraft-symbol')?'aircraft-symbol':undefined;
       map.addLayer(layer,before);
     } else map.setLayoutProperty?.(LAYER_ID,'visibility','visible');
