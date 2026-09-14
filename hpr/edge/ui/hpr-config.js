@@ -8,6 +8,7 @@ window.HPR_CONFIG = {
 
 document.write('<script src="/edge-calm-ui.js"><\/script>');
 document.write('<script src="/edge-ops.js"><\/script>');
+document.write('<script src="/edge-trace-policy.js"><\/script>');
 document.write('<script src="/edge-e1e7.js"><\/script>');
 document.write('<script src="/edge-enrich.js"><\/script>');
 document.write('<script src="/edge-traffic-enrich.js"><\/script>');
