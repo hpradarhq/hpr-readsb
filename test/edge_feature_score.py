@@ -15,11 +15,11 @@ checks = {
     'live_transport': has('hpr/edge/ui/airwire-adapter.js', 'new WebSocket', '0x0A', "binaryType='arraybuffer'")
                       and has('hpr/airwire/AIRWIRE-BINARY-V1.md', '/ws/air', '0x0A'),
     'map_visual': has('hpr/edge/ui/aircraft-renderer.js', 'hpr-cf-fe', 'No clustering', 'no LOD')
-                  and has('hpr/edge/ui/edge-ui-patch.js', 'Suppress the green/aging/stale ring', 'Planespotters.net')
-                  and has('hpr/edge/ui/edge-e1e7.js', 'aircraft-selected-emphasis'),
+                  and has('hpr/edge/ui/edge-ui-patch.js', "layer?.id==='aircraft-halo'", 'Planespotters.net', '/flags/4x3/')
+                  and has('hpr/edge/ui/edge-calm-ui.js', "layer?.id==='aircraft-selected-emphasis'", "'icon-size':['interpolate'"),
     'search_filter_sort': has('hpr/edge/ui/edge-ops.js', 'hprType', 'hprAltMin', 'hprSource', 'hprSort')
                           and has('hpr/edge/ui/edge-e1e7.js', 'hprCountry', 'hprSquawk', 'military', 'Emergency'),
-    'detail_enrichment': has('hpr/edge/ui/edge-ui-patch.js', 'Country', '/api/photo/hex/')
+    'detail_enrichment': has('hpr/edge/ui/edge-ui-patch.js', 'Country', '/api/photo/hex/', 'hpr-country-flag')
                          and has('hpr/edge/ui/airwire-adapter.js', 'typeCode', 'registration')
                          and has('hpr/edge/ui/edge-e1e7.js', 'Follow', 'Trace', 'Replay'),
     'tracks_history': has('hpr/edge/ui/edge-history.js', 'trace_${kind}_', 'hprTimeline', 'hprTraceGraph', 'hpr:history:replay')
