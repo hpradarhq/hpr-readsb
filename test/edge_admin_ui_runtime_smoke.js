@@ -1,0 +1,15 @@
+'use strict';
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const code=fs.readFileSync('hpr/edge/ui/edge-admin-ui.js','utf8');
+let seed=1;
+const crypto={getRandomValues:b=>{for(let i=0;i<b.length;i++)b[i]=(seed++*17)&255;return b}};
+const window={};
+const document={addEventListener:()=>{},querySelector:()=>null,querySelectorAll:()=>[],createElement:()=>({}),head:{appendChild:()=>{}}};
+const context={window,document,console,Object,Array,Map,JSON,URLSearchParams,Event:function(){},Uint8Array,Math,Number,String,RegExp,crypto,globalThis:null,setTimeout:()=>1,clearTimeout:()=>{},fetch:async()=>{throw new Error('fetch must not run in UUID smoke')},MutationObserver:function(){}};
+context.globalThis=context;
+vm.createContext(context);vm.runInContext(code,context,{filename:'edge-admin-ui.js'});
+assert(window.HPREdgeAdmin,'admin UI export missing');
+assert.strictEqual(typeof window.HPREdgeAdmin.uuid4,'function');
+const id=window.HPREdgeAdmin.uuid4();
+assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),`invalid UUID v4 fallback: ${id}`);
+console.log('edge admin UI runtime smoke PASS');
