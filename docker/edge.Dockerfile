@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.7.5-edge.1
-ARG FE_BUILD=260913.2
+ARG FE_VERSION=4.7.6-edge.1
+ARG FE_BUILD=260914.1
 
 FROM debian:bookworm-slim AS builder
 
@@ -57,14 +57,15 @@ RUN sed -i \
       -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
       -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-history.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
-    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","trace":"readsb-real"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
+    && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","trace":"readsb-real","marker":"cf-acicon"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
     && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
       hpradar.fe.build="${FE_BUILD}" \
       hpradar.airwire="binary-v1" \
-      hpradar.trace="readsb-real"
+      hpradar.trace="readsb-real" \
+      hpradar.marker="cf-acicon"
 
 ENV READSB_JSON_INTERVAL=1 \
     READSB_TRACE_INTERVAL=1 \
