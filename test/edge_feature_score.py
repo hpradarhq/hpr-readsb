@@ -19,7 +19,7 @@ checks = {
     'search_filter_sort': has('hpr/edge/ui/edge-ops.js', 'hprType', 'hprAltMin', 'hprSource', 'hprSort', 'data-preset="emergency"'),
     'detail_enrichment': has('hpr/edge/ui/edge-ui-patch.js', 'Country', '/api/photo/hex/')
                          and has('hpr/edge/ui/airwire-adapter.js', 'typeCode', 'registration'),
-    'tracks_history': has('hpr/edge/ui/edge-history.js', 'trace_full_', 'trace_recent_', 'Replay')
+    'tracks_history': has('hpr/edge/ui/edge-history.js', 'trace_${kind}_', "traceUrl(id,'full')", "traceUrl(id,'recent')", 'Replay')
                       and has('hpr/edge/ui/edge-ops.js', 'hpr-all-tracks', 'trace_recent_'),
     'coverage': has('hpr/edge/ui/edge-ops.js', 'hpr-range-rings', 'outline.json', 'actualRange'),
     'station_ops': has('hpr/edge/ui/edge-ops.js', 'EDGE HEALTH', 'AirWire', 'Dropped', 'Uptime'),
