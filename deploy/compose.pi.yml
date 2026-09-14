@@ -14,7 +14,7 @@ services:
       READSB_JSON_INTERVAL: "${READSB_JSON_INTERVAL:-1}"
 
     ports:
-      - "8080:80"      # Atlas Edge UI + /api/air/v1
+      - "8080:80"      # Atlas Edge UI + local admin API
       - "30002:30002"  # raw Mode-S
       - "30003:30003"  # SBS
       - "30004:30004"  # BeastReduce
@@ -22,9 +22,13 @@ services:
 
     volumes:
       - /dev/bus/usb:/dev/bus/usb
+      - hpr-edge-data:/data/hpr-edge
 
     device_cgroup_rules:
       - "c 189:* rwm"
 
     tmpfs:
       - /run/readsb:size=32m,mode=0755
+
+volumes:
+  hpr-edge-data:
