@@ -15,4 +15,5 @@ OUT="$(run_post display '{"pin":"123456","units":"metric","ring_enabled":true,"r
 OUT="$(run_post station '{"pin":"123456","name":"HP-EDGE","lat":20.9,"lon":106.8,"height_m":22,"uuid":"550e8400-e29b-41d4-a716-446655440000"}')"; printf '%s' "$OUT" | grep -q 'readsb-child-restart'; test -e "$RUN"; rm -f "$RUN"
 OUT="$(run_post feeder_upsert '{"pin":"123456","id":"hpr","name":"HPRadar","host":"feed.hpradar.com","port":30004,"protocol":"beast_reduce_plus_out","enabled":true,"uuid":"550e8400-e29b-41d4-a716-446655440000"}')"; printf '%s' "$OUT" | grep -q 'Status: 200 OK'; test "$(jq -r '.feeders[0].host' "$DATA/config.json")" = feed.hpradar.com; test -e "$RUN"
 OUT="$(run_post pin '{"pin":"123456","new_pin":"654321"}')"; printf '%s' "$OUT" | grep -q 'pin-changed'; test "$(cat "$DATA/pin")" = 654321
+node test/edge_admin_ui_runtime_smoke.js
 printf '%s\n' 'edge admin CGI smoke PASS'
