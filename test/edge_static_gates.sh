@@ -79,3 +79,6 @@ grep -Fq "b.textContent='Replay'" hpr/edge/ui/edge-g10-replay.js
 grep -Fq 'requestAnimationFrame(frame)' hpr/edge/ui/edge-g10-replay.js
 grep -Fq 'left:calc(86px + var(--list) + 12px)' hpr/edge/ui/edge-g10-replay.js
 ! grep -q 'MutationObserver\|setInterval' hpr/edge/ui/edge-g10-replay.js
+
+# G11 All Tracks stays disabled/hidden
+! grep -qiE 'All Tracks|allTracks|data-all-tracks|id="all-tracks"|id="allTracks"' hpr/edge/ui/index.html hpr/edge/ui/hpr-config.js hpr/edge/ui/edge-g10-replay.js
