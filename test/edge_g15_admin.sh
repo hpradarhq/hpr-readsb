@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+# G15 CI gate: provider-first feeders + child-only restart.
 
 test -s hpr/edge/ui/edge-g15-feeds.js
 grep -Fq 'skyfeed.hpradar.com' hpr/edge/ui/edge-g15-feeds.js
