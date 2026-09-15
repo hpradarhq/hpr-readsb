@@ -11,7 +11,7 @@ case "$OP" in
 config)
   [ "${REQUEST_METHOD:-GET}" = GET ] || reply '405 Method Not Allowed' '{"ok":false,"error":"method not allowed"}'
   [ -s "$C" ] || bad 'configuration not initialized'
-  reply '200 OK' "$(jq -c '. + {ok:true,pin_set:true}' "$C")";;
+  reply '200 OK' "$(jq -c '. + {ok:true,pin_set:true,apply_mode:"readsb-child-restart"}' "$C")";;
 station)
   post_body
   printf '%s' "$B" | jq -e '(.name|type)=="string" and (.name|length)>=1 and (.name|length)<=64 and (.lat==null or ((.lat|type)=="number" and .lat>=-90 and .lat<=90)) and (.lon==null or ((.lon|type)=="number" and .lon>=-180 and .lon<=180)) and (.height_m==null or ((.height_m|type)=="number" and .height_m>=-500 and .height_m<=10000)) and (.uuid|type)=="string"' >/dev/null 2>&1 || bad 'invalid station fields'
