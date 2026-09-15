@@ -1,5 +1,13 @@
 #!/bin/sh
 set -eu
+
+test -s hpr/edge/ui/edge-g14-display.js
+grep -Fq 'edge-g14-display.js' hpr/edge/ui/hpr-config.js
+grep -Fq 'ring_count' hpr/edge/admin.cgi
+grep -Fq 'actual_range' hpr/edge/admin.cgi
+grep -Fq 'Forward-compatible migration' hpr/edge/entrypoint.sh
+! grep -q 'MutationObserver\|setInterval' hpr/edge/ui/edge-g14-display.js
+
 D="$(mktemp -d)"; trap 'rm -rf "$D"' EXIT
 mkdir -p "$D/data" "$D/run"
 printf '%s\n' '{"station":{"name":"HPR","lat":20,"lon":106,"height_m":5,"uuid":""},"display":{"units":"nautical","ring_enabled":true,"ring_count":4,"ring_step_nm":50,"ring_color":"#59ddff","actual_range":true}}' > "$D/data/config.json"
