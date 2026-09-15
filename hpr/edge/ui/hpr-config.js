@@ -16,3 +16,4 @@ document.write('<script src="/edge-g9-trace.js"><\/script>');
 document.write('<script src="/edge-g10-replay.js"><\/script>');
 document.write('<script src="/edge-g12-settings-shell.js"><\/script>');
 document.write('<script src="/edge-g13-receiver.js"><\/script>');
+document.write('<script src="/edge-g14-display.js"><\/script>');
