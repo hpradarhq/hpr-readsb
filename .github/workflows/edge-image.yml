@@ -47,8 +47,9 @@ jobs:
       - name: FE static gates
         run: sh test/edge_static_gates.sh
 
-      - name: Receiver persistence regression
-        run: sh test/edge_g13_admin.sh
+      - name: Admin persistence regressions
+        run: |
+          for f in test/edge_g*_admin.sh; do sh "$f"; done
 
       - name: Chromium interaction regression
         env:
