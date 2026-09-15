@@ -130,3 +130,14 @@ grep -Fq 'PIN_FILE="$DATA_DIR/pin"' hpr/edge/entrypoint.sh
 grep -Fq "printf '%06d'" hpr/edge/entrypoint.sh
 test -s test/edge_g16_admin.sh
 test -s test/edge_g16_security.spec.js
+
+# G17 Vietnam label policy; deterministic on style.load, no polling
+test -s hpr/edge/ui/edge-g17-vn-labels.js
+grep -Fq 'edge-g17-vn-labels.js' hpr/edge/ui/hpr-config.js
+grep -Fq "properties:{name:'HOÀNG SA'}" hpr/edge/ui/edge-g17-vn-labels.js
+grep -Fq "properties:{name:'TRƯỜNG SA'}" hpr/edge/ui/edge-g17-vn-labels.js
+grep -Fq "const BLOCKED=['sansha','sansha city','nansha','nansha qundao'" hpr/edge/ui/edge-g17-vn-labels.js
+grep -Fq "'text-size':['interpolate',['linear'],['zoom'],4,9,9,12]" hpr/edge/ui/edge-g17-vn-labels.js
+grep -Fq "map.on?.('style.load',()=>apply(map,true))" hpr/edge/ui/edge-g17-vn-labels.js
+! grep -q 'MutationObserver\|setInterval\|setTimeout' hpr/edge/ui/edge-g17-vn-labels.js
+test -s test/edge_g17_vn_labels.spec.js
