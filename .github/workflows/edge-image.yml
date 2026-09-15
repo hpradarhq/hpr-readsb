@@ -45,7 +45,12 @@ jobs:
           for f in hpr/edge/ui/edge-g*.js test/edge_*.spec.js; do node --check "$f"; done
 
       - name: FE static gates
-        run: sh test/edge_static_gates.sh
+        run: |
+          sh test/edge_static_gates.sh
+          for f in test/edge_g*_gate.sh; do
+            [ -e "$f" ] || continue
+            sh "$f"
+          done
 
       - name: Admin persistence regressions
         run: |
