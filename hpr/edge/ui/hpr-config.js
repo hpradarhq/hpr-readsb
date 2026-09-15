@@ -13,3 +13,4 @@ document.write('<script src="/edge-g6-detail-layout.js"><\/script>');
 document.write('<script src="/edge-g7-enrich.js"><\/script>');
 document.write('<script src="/edge-g8-station.js"><\/script>');
 document.write('<script src="/edge-g9-trace.js"><\/script>');
+document.write('<script src="/edge-g10-replay.js"><\/script>');
