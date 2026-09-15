@@ -20,8 +20,15 @@ if [ ! -s "$CONFIG" ]; then
   LAT0="${FEEDER_LAT:-${RECEIVER_LAT:-}}"; LON0="${FEEDER_LONG:-${RECEIVER_LON:-}}"
   UUID0="${MULTIFEEDER_UUID:-${HPR_FEEDER_UUID:-}}"; ALT0="${FEEDER_ALT_M:-}"
   umask 077
-  jq -n --arg name "${FEEDER_NAME:-hpr-edge}" --arg lat "$LAT0" --arg lon "$LON0" --arg alt "$ALT0" --arg uuid "$UUID0" '{station:{name:$name,lat:(if $lat=="" then null else ($lat|tonumber) end),lon:(if $lon=="" then null else ($lon|tonumber) end),height_m:(if $alt=="" then null else ($alt|tonumber) end),uuid:$uuid}}' > "$CONFIG"
+  jq -n --arg name "${FEEDER_NAME:-hpr-edge}" --arg lat "$LAT0" --arg lon "$LON0" --arg alt "$ALT0" --arg uuid "$UUID0" '{station:{name:$name,lat:(if $lat=="" then null else ($lat|tonumber) end),lon:(if $lon=="" then null else ($lon|tonumber) end),height_m:(if $alt=="" then null else ($alt|tonumber) end),uuid:$uuid},display:{units:"nautical",ring_enabled:true,ring_count:4,ring_step_nm:50,ring_color:"#59ddff",actual_range:true}}' > "$CONFIG"
   chmod 600 "$CONFIG"
+else
+  # Forward-compatible migration for volumes created by earlier Edge gates.
+  if ! jq -e '.display' "$CONFIG" >/dev/null 2>&1; then
+    T="$(mktemp "$DATA_DIR/config.XXXXXX")"
+    jq '.display={units:"nautical",ring_enabled:true,ring_count:4,ring_step_nm:50,ring_color:"#59ddff",actual_range:true}' "$CONFIG" > "$T"
+    chmod 600 "$T"; mv "$T" "$CONFIG"
+  fi
 fi
 
 if [ ! -s "$PIN_FILE" ]; then
