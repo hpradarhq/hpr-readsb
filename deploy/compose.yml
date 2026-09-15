@@ -23,9 +23,13 @@ services:
 
     volumes:
       - /dev/bus/usb:/dev/bus/usb
+      - hpr-edge-data:/data/hpr-edge
 
     device_cgroup_rules:
       - "c 189:* rwm"
 
     tmpfs:
       - /run/readsb:size=32m,mode=0755
+
+volumes:
+  hpr-edge-data:
