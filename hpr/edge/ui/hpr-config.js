@@ -20,3 +20,4 @@ document.write('<script src="/edge-g14-display.js"><\/script>');
 document.write('<script src="/edge-g15-feeds.js"><\/script>');
 document.write('<script src="/edge-g16-security.js"><\/script>');
 document.write('<script src="/edge-g17-vn-labels.js"><\/script>');
+document.write('<script src="/edge-g18-responsive.js"><\/script>');
