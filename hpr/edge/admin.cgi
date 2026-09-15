@@ -38,5 +38,9 @@ feeder_delete)
   post_body; I="$(printf '%s' "$B" | jq -r '.id // ""')"; printf '%s' "$I" | grep -Eq '^[A-Za-z0-9_-]+$' || bad 'invalid feeder id'
   jq --arg id "$I" '.feeders=((.feeders//[])|map(select(.id!=$id)))' "$C" | save_json
   : > "$R"; reply '200 OK' '{"ok":true,"applied":"readsb-child-restart"}';;
+pin)
+  post_body; NEW="$(printf '%s' "$B" | jq -r '.new_pin // ""')"; printf '%s' "$NEW" | grep -Eq '^[0-9]{6}$' || bad 'PIN must be exactly 6 digits'
+  umask 077; T="$(mktemp "$D/pin.XXXXXX")"; printf '%s\n' "$NEW" > "$T"; chmod 600 "$T"; mv "$T" "$P"
+  reply '200 OK' '{"ok":true,"applied":"pin-changed"}';;
 *) bad 'unknown operation';;
 esac
