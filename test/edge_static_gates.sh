@@ -70,3 +70,12 @@ grep -Fq -- '--write-json-globe-index' hpr/edge/entrypoint.sh
 grep -Fq -- '--json-trace-interval=' hpr/edge/entrypoint.sh
 grep -Fq 'location /data/traces/' hpr/edge/nginx.conf
 grep -Fq 'alias /run/readsb/traces/' hpr/edge/nginx.conf
+
+# G10 explicit replay dock
+test -s hpr/edge/ui/edge-g10-replay.js
+grep -Fq 'edge-g10-replay.js' hpr/edge/ui/hpr-config.js
+grep -Fq "d.id='hprReplayDock'" hpr/edge/ui/edge-g10-replay.js
+grep -Fq "b.textContent='Replay'" hpr/edge/ui/edge-g10-replay.js
+grep -Fq 'requestAnimationFrame(frame)' hpr/edge/ui/edge-g10-replay.js
+grep -Fq 'left:calc(86px + var(--list) + 12px)' hpr/edge/ui/edge-g10-replay.js
+! grep -q 'MutationObserver\|setInterval' hpr/edge/ui/edge-g10-replay.js
