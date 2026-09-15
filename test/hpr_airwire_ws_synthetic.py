@@ -70,9 +70,13 @@ def ws_connect():
         "Sec-WebSocket-Version: 13\r\n\r\n"
     ).encode()
     s.sendall(req)
+    # Do not over-read past the HTTP header terminator: the server may send the
+    # first binary AirWire frame in the same TCP packet as the 101 response.
     data = bytearray()
-    while b"\r\n\r\n" not in data:
-        data.extend(s.recv(1024))
+    while not data.endswith(b"\r\n\r\n"):
+        data.extend(recv_exact(s, 1))
+        if len(data) > 8192:
+            raise RuntimeError("websocket handshake too large")
     if b" 101 " not in data.split(b"\r\n", 1)[0]:
         raise RuntimeError(f"bad websocket handshake: {data[:120]!r}")
     s.settimeout(3)
