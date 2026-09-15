@@ -1,9 +1,11 @@
 # G20A-D to G21 release candidate
 
-Candidate: FE `4.7.5-edge.rc2`, build `260916.rc1`, branch `redteam/edge-freeze-20260915`.
+Candidate: FE `4.7.5-edge.rc3`, build `260916.rc2`, branch `redteam/edge-freeze-20260915`.
 
 Supersedes `4.7.5-edge.rc1` (`121a0eb`), which failed physical acceptance: real Pi
 Edge FE froze while the mocked Chromium + synthetic 400-aircraft CI stayed green.
+`rc2` carried the freeze fix but its tag run tripped a pre-existing feeds-panel
+race; `rc3` adds the deterministic feeds reload below.
 
 ## Root cause (rc1)
 
@@ -34,6 +36,8 @@ Edge FE froze while the mocked Chromium + synthetic 400-aircraft CI stayed green
   `#closeCollection`) and delegates for the dynamic `#closeDetail`.
 - `edge-g17-vn-labels.js`: deny filter no longer targets aircraft/hpr layers.
 - `edge-g7-enrich.js`: bounded enrichment cache.
+- `edge-g15-feeds.js`: reload refreshes only the feed rows, so an in-flight save
+  no longer resets the preset/custom form state (was a CI-flaky UX race).
 
 ## Regression
 

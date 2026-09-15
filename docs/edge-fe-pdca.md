@@ -1,7 +1,7 @@
 # Atlas Edge FE PDCA backlog
 
 Frozen baseline: `f1cadf921bebb2748fbc16a6e83c67fefa683630` (physical-good).
-Test branch/tag: `redteam/edge-freeze-20260915` / `edge-v4.7.5-edge.rc2`.
+Test branch/tag: `redteam/edge-freeze-20260915` / `edge-v4.7.5-edge.rc3`.
 
 ## Backlog
 G1-G20: completed automated gates.
@@ -32,7 +32,9 @@ Check
 - All 17 Chromium specs and all `edge_g*_gate.sh` static gates pass.
 
 Act
-- Cut `4.7.5-edge.rc2`, push the branch and `edge-v4.7.5-edge.rc2` tag for the
+- rc2 exposed a feeds-panel reload race (form reset while a save was in flight);
+  the reload now refreshes only the feed rows.
+- Cut `4.7.5-edge.rc3`, push the branch and `edge-v4.7.5-edge.rc3` tag for the
   arm64/armv7 image build. Physical acceptance remains the only promotion gate.
 
 PDCA: Plan -> Do smallest change -> Check automated gates -> Act only on PASS.
