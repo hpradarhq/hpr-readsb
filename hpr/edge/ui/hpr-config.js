@@ -18,3 +18,4 @@ document.write('<script src="/edge-g12-settings-shell.js"><\/script>');
 document.write('<script src="/edge-g13-receiver.js"><\/script>');
 document.write('<script src="/edge-g14-display.js"><\/script>');
 document.write('<script src="/edge-g15-feeds.js"><\/script>');
+document.write('<script src="/edge-g16-security.js"><\/script>');
