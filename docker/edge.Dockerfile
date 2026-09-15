@@ -38,18 +38,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       nginx \
       tzdata \
+      jq \
+      busybox \
       librtlsdr0 \
       libusb-1.0-0 \
       zlib1g \
       libzstd1 \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default \
-    && mkdir -p /run/readsb /usr/local/share/hpr-readsb /usr/share/nginx/html
+    && mkdir -p /run/readsb /run/hpr-edge /data/hpr-edge /usr/local/share/hpr-readsb /usr/local/lib/hpr-edge/www/cgi-bin /usr/share/nginx/html
 
 COPY --from=builder /out/readsb /usr/local/bin/readsb
 COPY --from=builder /out/aircraft.csv.gz /usr/local/share/hpr-readsb/aircraft.csv.gz
 COPY hpr/edge/nginx.conf /etc/nginx/nginx.conf
 COPY hpr/edge/entrypoint.sh /usr/local/bin/hpr-edge
+COPY hpr/edge/admin.cgi /usr/local/lib/hpr-edge/www/cgi-bin/admin
 COPY hpr/edge/ui/ /usr/share/nginx/html/
 
 RUN sed -i \
@@ -58,7 +61,7 @@ RUN sed -i \
       -e 's|</head>|<script src="/hpr-config.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
     && printf '{"fe":"%s","build":"%s","airwire":"binary-v1"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
-    && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge
+    && chmod 0755 /usr/local/bin/readsb /usr/local/bin/hpr-edge /usr/local/lib/hpr-edge/www/cgi-bin/admin
 
 LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
       org.opencontainers.image.version="${FE_VERSION}" \
@@ -68,7 +71,8 @@ LABEL org.opencontainers.image.title="HPRadar Atlas Edge" \
 ENV READSB_JSON_INTERVAL=1 \
     READSB_GAIN=auto \
     HPR_UPSTREAM_PORT=30004 \
-    HPR_AIRWIRE_WS_PORT=30154
+    HPR_AIRWIRE_WS_PORT=30154 \
+    HPR_EDGE_DATA_DIR=/data/hpr-edge
 
 EXPOSE 80 30002 30003 30004 30005
 
