@@ -11,3 +11,7 @@ viewadsb
 .version
 .env
 deploy/.env
+node_modules/
+package-lock.json
+test-results/
+playwright-report/

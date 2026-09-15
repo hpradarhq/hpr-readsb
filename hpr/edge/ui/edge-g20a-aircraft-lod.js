@@ -10,7 +10,7 @@ proto.addLayer=function(layer,beforeId){
     const dot={
       id:'aircraft-lod-dot',type:'symbol',source:layer.source,maxzoom:5.8,
       layout:{
-        'text-field':'●','text-size':['interpolate',['linear'],['zoom'],2,8,5.8,10],
+        'text-field':'●','text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],2,8,5.8,10],
         'text-allow-overlap':false,'text-ignore-placement':false,
         'symbol-sort-key':['case',['==',['get','selected'],1],0,['match',['get','status'],'live',1,'aging',2,3]]
       },

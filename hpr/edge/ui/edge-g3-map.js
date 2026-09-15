@@ -11,9 +11,10 @@ MapCtor.prototype.addLayer=function(layer,before){
     }};
   }
   if(layer?.id==='aircraft-symbol'){
-    const normal=['interpolate',['linear'],['zoom'],5,.56,8,.72,12,.96];
-    const selected=['interpolate',['linear'],['zoom'],5,.64,8,.82,12,1.10];
-    layer={...layer,layout:{...layer.layout,'icon-size':['case',['==',['get','selected'],1],selected,normal]}};
+    // MapLibre permits only one zoom-based subexpression per expression, so the
+    // selected/normal switch must live inside the interpolation stops.
+    const sel=['==',['get','selected'],1];
+    layer={...layer,layout:{...layer.layout,'icon-size':['interpolate',['linear'],['zoom'],5,['case',sel,.64,.56],8,['case',sel,.82,.72],12,['case',sel,1.10,.96]]}};
   }
   return original.call(this,layer,before);
 };

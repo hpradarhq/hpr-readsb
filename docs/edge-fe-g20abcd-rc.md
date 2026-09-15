@@ -1,11 +1,46 @@
 # G20A-D to G21 release candidate
 
-Candidate: FE `4.7.5-edge.rc1`, build `260915.rc1`, branch `feat/edge-e1-e7-ux`.
+Candidate: FE `4.7.5-edge.rc2`, build `260916.rc1`, branch `redteam/edge-freeze-20260915`.
 
-G20A restores Atlas aircraft silhouettes at operational zoom and uses collision-decluttered status dots only at low zoom. Selected aircraft remain visible one LOD longer. No clustering.
+Supersedes `4.7.5-edge.rc1` (`121a0eb`), which failed physical acceptance: real Pi
+Edge FE froze while the mocked Chromium + synthetic 400-aircraft CI stayed green.
 
-G20B-D re-gate the already implemented map/display, station/admin/feed, and cross-gate UX contracts. Existing Chromium regression and 400-aircraft soak remain authoritative.
+## Root cause (rc1)
 
-G21 requires static/runtime/admin/Chromium/AirWire/readsb/400-aircraft tests to pass and arm64 + armv7 image build/push as `edge-ux`.
+- `edge-g3-map.js` built `aircraft-symbol.layout.icon-size` as
+  `['case', selected, ['interpolate', ..., ['zoom'], ...], ['interpolate', ..., ['zoom'], ...]]`.
+  Real MapLibre allows only one zoom-based `step`/`interpolate` per expression,
+  so it rejected the whole `aircraft-symbol` layer. Aircraft silhouettes never
+  rendered and the map appeared frozen.
+- CI could not see this: the Chromium suites substitute a MapLibre stub that did
+  not validate expressions, and the smoke gate even asserted the invalid `case`
+  shape. `edge-g20a-aircraft-lod.js` was also never loaded by any test.
+- G20A's icon fix was defeated because it wraps `addLayer` and then calls the
+  captured G3 wrapper, which overwrote `icon-size` with the invalid expression.
+- The list update hot path also called `toLocaleString(undefined, {...})` per row
+  per tick (17% of sampled CPU) and generated full inline SVG markup for rows
+  that G1 CSS hides, making the Pi UI janky under real load.
 
-Stable `edge` is not promoted. Physical acceptance is one final eyeball test only after CI confirms the G21 RC image was pushed.
+## Fix (rc2)
+
+- `edge-g3-map.js`: single zoom `interpolate` with the selected/normal `case` at
+  the stops.
+- `edge-g20a-aircraft-lod.js`: explicit `text-font` for the LOD dot layer so it
+  uses the font the style actually serves.
+- `index.html`: fast integer/decimal formatter (no `toLocaleString`), no hidden
+  list SVG generation, G20A layers included in the Layers visibility toggle,
+  row handler scoped to `#airList`.
+- `edge-g18-responsive.js`: close-sync uses the real `#closeList` (was
+  `#closeCollection`) and delegates for the dynamic `#closeDetail`.
+- `edge-g17-vn-labels.js`: deny filter no longer targets aircraft/hpr layers.
+- `edge-g7-enrich.js`: bounded enrichment cache.
+
+## Regression
+
+- `test/edge_g21_real_map.spec.js`: production script set + real MapLibre +
+  sustained binary AirWire load; fails if `aircraft-symbol` is rejected.
+- `edge_browser_smoke.spec.js` / `edge_g20_browser_soak.spec.js`: stubs now
+  enforce the one-zoom-subexpression rule and load `edge-g20a-aircraft-lod.js`.
+
+Stable `edge` is not promoted. Physical acceptance is one final eyeball test
+only after CI confirms the G21 RC image was pushed.

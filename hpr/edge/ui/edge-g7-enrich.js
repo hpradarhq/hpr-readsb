@@ -2,10 +2,11 @@
 (()=>{'use strict';
 const TRAFFIC=String(window.HPR_CONFIG?.trafficApi||'/api/traffic').replace(/\/$/,''),PHOTO=String(window.HPR_CONFIG?.photoApi||'/api/photo/hex').replace(/\/$/,'');
 const TTL={aircraft:24*3600e3,route:30*60e3,photo:24*3600e3,error:30e3};
-const cache=new Map(),inflight=new Map();
+const MAX_CACHE=2000;const cache=new Map(),inflight=new Map();
+function prune(){if(cache.size<=MAX_CACHE)return;const rows=[...cache.entries()].sort((a,b)=>(a[1].ts||0)-(b[1].ts||0));for(let i=0,n=rows.length-MAX_CACHE;i<n;i++)cache.delete(rows[i][0])}
 function pair(root,label){for(const kv of root.querySelectorAll('.kv')){const c=[...kv.children];for(let i=0;i<c.length-1;i+=2)if(c[i].textContent.trim()===label)return c[i+1].textContent.trim()}return''}
 function current(root){const hex=pair(root,'ICAO').toLowerCase(),callsign=pair(root,'Callsign').replace(/—/g,'').trim().toUpperCase();return/^[0-9a-f]{6}$/.test(hex)?{hex,callsign,key:`${hex}:${callsign}`} :null}
-async function get(key,ttl,url){const now=Date.now(),old=cache.get(key);if(old&&now-old.ts<(old.ok?ttl:TTL.error))return old.value;if(inflight.has(key))return inflight.get(key);const p=(async()=>{try{const r=await fetch(url,{cache:'force-cache'});if(!r.ok)throw Error(String(r.status));const value=await r.json();cache.set(key,{ts:Date.now(),ok:true,value});return value}catch(_){cache.set(key,{ts:Date.now(),ok:false,value:null});return null}finally{inflight.delete(key)}})();inflight.set(key,p);return p}
+async function get(key,ttl,url){const now=Date.now(),old=cache.get(key);if(old&&now-old.ts<(old.ok?ttl:TTL.error))return old.value;if(inflight.has(key))return inflight.get(key);const p=(async()=>{try{const r=await fetch(url,{cache:'force-cache'});if(!r.ok)throw Error(String(r.status));const value=await r.json();cache.set(key,{ts:Date.now(),ok:true,value});return value}catch(_){cache.set(key,{ts:Date.now(),ok:false,value:null});return null}finally{inflight.delete(key);prune()}})();inflight.set(key,p);return p}
 const aircraft=j=>j?.response?.aircraft||j?.aircraft||j?.response||j||null;
 const route=j=>j?.response?.flightroute||j?.flightroute||j?.route||j?.response||j||null;
 const airportCode=a=>a?.icao_code||a?.icao||a?.iata_code||a?.iata||null;

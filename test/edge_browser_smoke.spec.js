@@ -29,9 +29,18 @@ function airwireFrame() {
 }
 
 const MAPLIBRE_STUB = `(()=>{
+  // Mirror MapLibre's real style rule: an expression may contain only one
+  // zoom-based interpolate/step subexpression. Layers that violate it are
+  // rejected by real MapLibre, so the stub must reject them too.
+  function zoomUses(e){ if(!Array.isArray(e)) return 0; let n=0; const op=e[0];
+    if(op==='interpolate' && Array.isArray(e[2]) && e[2][0]==='zoom') n=1;
+    else if(op==='step' && Array.isArray(e[1]) && e[1][0]==='zoom') n=1;
+    for(const v of e) if(Array.isArray(v)) n+=zoomUses(v);
+    return n; }
+  function invalidLayout(layer){ const layout=layer&&layer.layout||{}; for(const k in layout){ if(Array.isArray(layout[k]) && zoomUses(layout[k])>1) return k; } return null; }
   class Bounds { extend(){ return this; } }
   class Map {
-    constructor(opts){ this.opts=opts; this.sources=new globalThis.Map(); this.layers=new globalThis.Map(); this.images=new Set(); this.handlers={}; this.zoom=opts.zoom||6; globalThis.__hprTestMap=this; setTimeout(()=>this.emit('load'),0); }
+    constructor(opts){ this.opts=opts; this.sources=new globalThis.Map(); this.layers=new globalThis.Map(); this.images=new Set(); this.handlers={}; this.styleErrors=[]; this.zoom=opts.zoom||6; globalThis.__hprTestMap=this; setTimeout(()=>this.emit('load'),0); }
     on(ev,a,b){ const fn=typeof a==='function'?a:b; (this.handlers[ev]||(this.handlers[ev]=[])).push(fn); return this; }
     once(ev,fn){ const wrap=(...args)=>{ this.off(ev,wrap); fn(...args); }; return this.on(ev,wrap); }
     off(ev,fn){ this.handlers[ev]=(this.handlers[ev]||[]).filter(x=>x!==fn); }
@@ -39,7 +48,7 @@ const MAPLIBRE_STUB = `(()=>{
     addControl(){ return this; }
     addSource(id,spec){ const source={data:spec.data,setData(data){this.data=data;}}; this.sources.set(id,source); }
     getSource(id){ return this.sources.get(id); }
-    addLayer(layer){ this.layers.set(layer.id,layer); }
+    addLayer(layer){ const bad=invalidLayout(layer); if(bad){ this.styleErrors.push(layer.id+'.'+bad); return; } this.layers.set(layer.id,layer); }
     getLayer(id){ return this.layers.get(id); }
     setLayoutProperty(){}
     setLayerZoomRange(){}
@@ -76,7 +85,7 @@ test.beforeAll(async () => {
     const file = path.resolve(ROOT, rel);
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.statusCode=404; return void res.end('not found'); }
     let body = fs.readFileSync(file);
-    if (rel === 'index.html') body = Buffer.from(body.toString('utf8').replace('</head>','<script src="/hpr-config.js"></script>\n</head>'));
+    if (rel === 'index.html') body = Buffer.from(body.toString('utf8').replace('</head>','<script src="/hpr-config.js"></script>\n<script src="/edge-g20a-aircraft-lod.js"></script>\n</head>'));
     res.setHeader('content-type', mime(file)); res.end(body);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -111,13 +120,19 @@ test('Atlas Edge remains clickable and responsive', async () => {
 
   await expect.poll(() => page.evaluate(() => !!globalThis.__hprTestMap?.getLayer('aircraft-symbol'))).toBe(true);
   const mapPolicy = await page.evaluate(() => {
-    const halo=globalThis.__hprTestMap.getLayer('aircraft-halo');
-    const symbol=globalThis.__hprTestMap.getLayer('aircraft-symbol');
-    return {haloRadius:halo.paint['circle-radius'],haloStroke:halo.paint['circle-stroke-color'],symbolSize:symbol.layout['icon-size']};
+    const map=globalThis.__hprTestMap;
+    const halo=map.getLayer('aircraft-halo');
+    const symbol=map.getLayer('aircraft-symbol');
+    return {haloRadius:halo.paint['circle-radius'],haloStroke:halo.paint['circle-stroke-color'],symbolSize:symbol.layout['icon-size'],
+      lodDot:!!map.getLayer('aircraft-lod-dot'),selected:!!map.getLayer('aircraft-selected-symbol'),styleErrors:map.styleErrors};
   });
   expect(mapPolicy.haloRadius).toBe(8);
   expect(JSON.stringify(mapPolicy.haloStroke)).not.toContain('selected');
-  expect(mapPolicy.symbolSize[0]).toBe('case');
+  // Single zoom-based interpolate with the selected/normal case at the stops.
+  expect(mapPolicy.symbolSize[0]).toBe('interpolate');
+  expect(mapPolicy.lodDot).toBe(true);
+  expect(mapPolicy.selected).toBe(true);
+  expect(mapPolicy.styleErrors).toEqual([]);
 
   const collection = page.locator('#collection');
   const beforeOpen = await collection.evaluate(el => el.classList.contains('open'));

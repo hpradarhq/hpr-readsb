@@ -61,7 +61,7 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
         run: |
           google-chrome --version
-          npm install --no-save --ignore-scripts @playwright/test@1.55.0
+          npm install --no-save --ignore-scripts @playwright/test@1.55.0 maplibre-gl@5.24.0
           npx playwright test test/edge_*.spec.js --reporter=line --workers=1
 
       - name: Golden vectors
