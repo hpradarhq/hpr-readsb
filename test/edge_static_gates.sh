@@ -82,3 +82,12 @@ grep -Fq 'left:calc(86px + var(--list) + 12px)' hpr/edge/ui/edge-g10-replay.js
 
 # G11 All Tracks stays disabled/hidden
 ! grep -qiE 'All Tracks|allTracks|data-all-tracks|id="all-tracks"|id="allTracks"' hpr/edge/ui/index.html hpr/edge/ui/hpr-config.js hpr/edge/ui/edge-g10-replay.js
+
+# G12 compact Settings shell
+test -s hpr/edge/ui/edge-g12-settings-shell.js
+grep -Fq 'edge-g12-settings-shell.js' hpr/edge/ui/hpr-config.js
+grep -Fq "['receiver','Receiver']" hpr/edge/ui/edge-g12-settings-shell.js
+grep -Fq "['display','Display']" hpr/edge/ui/edge-g12-settings-shell.js
+grep -Fq "['feeds','Feeds']" hpr/edge/ui/edge-g12-settings-shell.js
+grep -Fq "['security','Security']" hpr/edge/ui/edge-g12-settings-shell.js
+! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g12-settings-shell.js
