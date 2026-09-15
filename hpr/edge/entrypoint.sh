@@ -1,9 +1,13 @@
 #!/bin/sh
 set -eu
 
-mkdir -p /run/readsb
+DATA_DIR="${HPR_EDGE_DATA_DIR:-/data/hpr-edge}"
+CONFIG="$DATA_DIR/config.json"
+PIN_FILE="$DATA_DIR/pin"
+RUN_DIR=/run/hpr-edge
+RELOAD_FILE="$RUN_DIR/reload"
+mkdir -p /run/readsb "$DATA_DIR" "$RUN_DIR"
 
-# Existing HPR feeder env vocabulary is canonical on edge nodes.
 TZ_VALUE="${FEEDER_TZ:-${EEDER_TZ:-Asia/Ho_Chi_Minh}}"
 export TZ="$TZ_VALUE"
 if [ -e "/usr/share/zoneinfo/$TZ_VALUE" ]; then
@@ -11,54 +15,76 @@ if [ -e "/usr/share/zoneinfo/$TZ_VALUE" ]; then
   printf '%s\n' "$TZ_VALUE" > /etc/timezone
 fi
 
-LAT="${FEEDER_LAT:-${RECEIVER_LAT:-}}"
-LON="${FEEDER_LONG:-${RECEIVER_LON:-}}"
-UUID="${MULTIFEEDER_UUID:-${HPR_FEEDER_UUID:-}}"
+# Import legacy env once; after first boot /data/hpr-edge/config.json is canonical.
+if [ ! -s "$CONFIG" ]; then
+  LAT0="${FEEDER_LAT:-${RECEIVER_LAT:-}}"; LON0="${FEEDER_LONG:-${RECEIVER_LON:-}}"
+  UUID0="${MULTIFEEDER_UUID:-${HPR_FEEDER_UUID:-}}"; ALT0="${FEEDER_ALT_M:-}"
+  umask 077
+  jq -n --arg name "${FEEDER_NAME:-hpr-edge}" --arg lat "$LAT0" --arg lon "$LON0" --arg alt "$ALT0" --arg uuid "$UUID0" '{station:{name:$name,lat:(if $lat=="" then null else ($lat|tonumber) end),lon:(if $lon=="" then null else ($lon|tonumber) end),height_m:(if $alt=="" then null else ($alt|tonumber) end),uuid:$uuid}}' > "$CONFIG"
+  chmod 600 "$CONFIG"
+fi
 
-# Expose feeder metadata next to readsb JSON for Atlas Edge / diagnostics.
-cat > /run/readsb/station.json <<EOF
-{"name":"${FEEDER_NAME:-}","lat":${LAT:-null},"lon":${LON:-null},"alt_m":${FEEDER_ALT_M:-null},"alt_ft":${FEEDER_ALT_FT:-null},"multifeeder_uuid":"${MULTIFEEDER_UUID:-}","adsbx_uuid":"${ADSBX_UUID:-}","heywhatsthat_id":"${FEEDER_HEYWHATSTHAT_ID:-}","heywhatsthat_alts":"${FEEDER_HEYWHATSTHAT_ALTS:-}"}
-EOF
+if [ ! -s "$PIN_FILE" ]; then
+  N="$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')"; PIN="$(printf '%06d' $((N % 1000000)))"
+  umask 077; printf '%s\n' "$PIN" > "$PIN_FILE"; chmod 600 "$PIN_FILE"
+  printf '%s\n' "HPR Edge first-run ADMIN PIN: $PIN"
+fi
 
-# nginx only serves Atlas Edge UI and readsb-generated JSON.
+write_station_json(){
+  jq '{name:.station.name,lat:.station.lat,lon:.station.lon,alt_m:.station.height_m,alt_ft:(if .station.height_m==null then null else (.station.height_m/0.3048) end),multifeeder_uuid:.station.uuid,adsbx_uuid:"",heywhatsthat_id:"",heywhatsthat_alts:""}' "$CONFIG" > /run/readsb/station.json
+}
+
+READSB_PID=''; ADMIN_PID=''
+start_readsb(){
+  write_station_json
+  LAT="$(jq -r '.station.lat // empty' "$CONFIG")"; LON="$(jq -r '.station.lon // empty' "$CONFIG")"; UUID="$(jq -r '.station.uuid // empty' "$CONFIG")"
+  set -- /usr/local/bin/readsb \
+    --device-type rtlsdr \
+    --gain="${READSB_GAIN:-auto}" \
+    --net \
+    --quiet \
+    --write-json=/run/readsb \
+    --write-json-every="${READSB_JSON_INTERVAL:-1}" \
+    --write-json-globe-index \
+    --json-trace-interval="${READSB_TRACE_INTERVAL:-1}" \
+    --db-file=/usr/local/share/hpr-readsb/aircraft.csv.gz \
+    --net-ro-port=30002 \
+    --net-sbs-port=30003 \
+    --net-beast-reduce-out-port=30004 \
+    --net-bo-port=30005
+  [ -z "${ADSB_SDR_SERIAL:-}" ] || set -- "$@" "--device=${ADSB_SDR_SERIAL}"
+  if [ -n "${ADSB_SDR_PPM:-}" ] && [ "${ADSB_SDR_PPM}" != xxx ] && [ "${ADSB_SDR_PPM}" != XXX ]; then set -- "$@" "--ppm=${ADSB_SDR_PPM}"; fi
+  [ -z "$LAT" ] || set -- "$@" "--lat=$LAT"
+  [ -z "$LON" ] || set -- "$@" "--lon=$LON"
+  [ -z "${READSB_MAX_RANGE_NM:-}" ] || set -- "$@" "--max-range=${READSB_MAX_RANGE_NM}"
+  [ -z "$UUID" ] || set -- "$@" "--uuid=$UUID"
+  [ -z "${HPR_UPSTREAM_HOST:-}" ] || set -- "$@" "--net-connector=${HPR_UPSTREAM_HOST},${HPR_UPSTREAM_PORT:-30004},beast_reduce_plus_out"
+  printf '%s\n' "HPR Edge readsb start: station=$(jq -r '.station.name' "$CONFIG") Atlas=:80 AirWire=:${HPR_AIRWIRE_WS_PORT:-30154}"
+  "$@" & READSB_PID=$!
+}
+
+stop_all(){
+  [ -z "$READSB_PID" ] || kill "$READSB_PID" 2>/dev/null || true
+  [ -z "$ADMIN_PID" ] || kill "$ADMIN_PID" 2>/dev/null || true
+  nginx -s quit 2>/dev/null || true
+  wait 2>/dev/null || true
+  exit 0
+}
+trap stop_all INT TERM
+
 nginx
+busybox httpd -f -p 127.0.0.1:8082 -h /usr/local/lib/hpr-edge/www & ADMIN_PID=$!
+start_readsb
 
-set -- /usr/local/bin/readsb \
-  --device-type rtlsdr \
-  --gain="${READSB_GAIN:-auto}" \
-  --net \
-  --quiet \
-  --write-json=/run/readsb \
-  --write-json-every="${READSB_JSON_INTERVAL:-1}" \
-  --write-json-globe-index \
-  --json-trace-interval="${READSB_TRACE_INTERVAL:-1}" \
-  --db-file=/usr/local/share/hpr-readsb/aircraft.csv.gz \
-  --net-ro-port=30002 \
-  --net-sbs-port=30003 \
-  --net-beast-reduce-out-port=30004 \
-  --net-bo-port=30005
-
-if [ -n "${ADSB_SDR_SERIAL:-}" ]; then
-  set -- "$@" "--device=${ADSB_SDR_SERIAL}"
-fi
-if [ -n "${ADSB_SDR_PPM:-}" ] && [ "${ADSB_SDR_PPM}" != "xxx" ] && [ "${ADSB_SDR_PPM}" != "XXX" ]; then
-  set -- "$@" "--ppm=${ADSB_SDR_PPM}"
-fi
-if [ -n "$LAT" ]; then
-  set -- "$@" "--lat=${LAT}"
-fi
-if [ -n "$LON" ]; then
-  set -- "$@" "--lon=${LON}"
-fi
-if [ -n "${READSB_MAX_RANGE_NM:-}" ]; then
-  set -- "$@" "--max-range=${READSB_MAX_RANGE_NM}"
-fi
-if [ -n "$UUID" ]; then
-  set -- "$@" "--uuid=${UUID}"
-fi
-if [ -n "${HPR_UPSTREAM_HOST:-}" ]; then
-  set -- "$@" "--net-connector=${HPR_UPSTREAM_HOST},${HPR_UPSTREAM_PORT:-30004},beast_reduce_plus_out"
-fi
-
-printf '%s\n' "HPR Edge starting: station=${FEEDER_NAME:-hpr-edge} serial=${ADSB_SDR_SERIAL:-auto} Atlas=:80 BeastReduce=:30004 Beast=:30005"
-exec "$@"
+while :; do
+  if [ -e "$RELOAD_FILE" ]; then
+    rm -f "$RELOAD_FILE"
+    printf '%s\n' 'HPR Edge applying Receiver config: readsb child restart only'
+    kill "$READSB_PID" 2>/dev/null || true; wait "$READSB_PID" 2>/dev/null || true; sleep 1; start_readsb
+  elif ! kill -0 "$READSB_PID" 2>/dev/null; then
+    wait "$READSB_PID" 2>/dev/null || true
+    printf '%s\n' 'HPR Edge readsb exited; restarting child'
+    sleep 1; start_readsb
+  fi
+  sleep 1
+done
