@@ -8,4 +8,4 @@ grep -q "aircraft-selected-symbol" "$JS"
 grep -q "icon-allow-overlap':false" "$JS"
 grep -q "text-allow-overlap':false" "$JS"
 grep -q "edge-g20a-aircraft-lod.js" "$DOCKER"
-echo 'G20A PASS: full aircraft silhouettes at operational zoom; low-zoom decluttered dots; selected target retained.'
+echo 'G20A PASS: aircraft silhouettes + low-zoom LOD contract wired.'
