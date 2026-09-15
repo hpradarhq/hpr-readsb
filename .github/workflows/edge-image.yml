@@ -36,7 +36,7 @@ jobs:
       - name: Build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev
+          sudo apt-get install -y build-essential pkg-config zlib1g-dev libzstd-dev jq busybox
 
       - name: Edge FE syntax
         run: |
@@ -46,6 +46,9 @@ jobs:
 
       - name: FE static gates
         run: sh test/edge_static_gates.sh
+
+      - name: Receiver persistence regression
+        run: sh test/edge_g13_admin.sh
 
       - name: Chromium interaction regression
         env:
