@@ -91,3 +91,42 @@ grep -Fq "['display','Display']" hpr/edge/ui/edge-g12-settings-shell.js
 grep -Fq "['feeds','Feeds']" hpr/edge/ui/edge-g12-settings-shell.js
 grep -Fq "['security','Security']" hpr/edge/ui/edge-g12-settings-shell.js
 ! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g12-settings-shell.js
+
+# G13 persistent Receiver settings; only readsb child restarts
+test -s hpr/edge/ui/edge-g13-receiver.js
+grep -Fq 'edge-g13-receiver.js' hpr/edge/ui/hpr-config.js
+grep -Fq "api('station',payload)" hpr/edge/ui/edge-g13-receiver.js
+grep -Fq 'Saved · readsb child restarting' hpr/edge/ui/edge-g13-receiver.js
+grep -Fq 'DATA_DIR="${HPR_EDGE_DATA_DIR:-/data/hpr-edge}"' hpr/edge/entrypoint.sh
+grep -Fq 'HPR Edge applying persistent config: readsb child restart only' hpr/edge/entrypoint.sh
+test -s test/edge_g13_admin.sh
+test -s test/edge_g13_receiver.spec.js
+
+# G14 persistent Display settings; live apply without readsb restart
+test -s hpr/edge/ui/edge-g14-display.js
+grep -Fq 'edge-g14-display.js' hpr/edge/ui/hpr-config.js
+grep -Fq "api('display',{pin,...d})" hpr/edge/ui/edge-g14-display.js
+grep -Fq "map.addSource('hpr-display-rings'" hpr/edge/ui/edge-g14-display.js
+grep -Fq 'Applies live; readsb is not restarted.' hpr/edge/ui/edge-g14-display.js
+test -s test/edge_g14_admin.sh
+test -s test/edge_g14_display.spec.js
+
+# G15 provider-first feeds; advanced transport only for Custom
+test -s hpr/edge/ui/edge-g15-feeds.js
+grep -Fq 'edge-g15-feeds.js' hpr/edge/ui/hpr-config.js
+grep -Fq "id:'hpradar',name:'HPRadar',host:'skyfeed.hpradar.com',port:30004,protocol:'beast_reduce_plus_out'" hpr/edge/ui/edge-g15-feeds.js
+grep -Fq '<div id="hprFeedCustom" hidden>' hpr/edge/ui/edge-g15-feeds.js
+grep -Fq "e.target.value!=='custom'" hpr/edge/ui/edge-g15-feeds.js
+test -s test/edge_g15_admin.sh
+test -s test/edge_g15_feeds.spec.js
+
+# G16 six-digit admin PIN management
+test -s hpr/edge/ui/edge-g16-security.js
+grep -Fq 'edge-g16-security.js' hpr/edge/ui/hpr-config.js
+grep -Fq "fetch('/api/admin?op=pin'" hpr/edge/ui/edge-g16-security.js
+grep -Fq "if(!/^\\d{6}$/.test(pin)||!/^\\d{6}$/.test(next))" hpr/edge/ui/edge-g16-security.js
+grep -Fq 'PIN changed' hpr/edge/ui/edge-g16-security.js
+grep -Fq 'PIN_FILE="$DATA_DIR/pin"' hpr/edge/entrypoint.sh
+grep -Fq "printf '%06d'" hpr/edge/entrypoint.sh
+test -s test/edge_g16_admin.sh
+test -s test/edge_g16_security.spec.js
