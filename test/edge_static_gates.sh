@@ -56,7 +56,7 @@ grep -Fq 'data-hpr-g8="1"' hpr/edge/ui/edge-g8-station.js
 grep -Fq 'AirWire frames' hpr/edge/ui/edge-g8-station.js
 ! grep -q 'MutationObserver\|setInterval\|fetch(' hpr/edge/ui/edge-g8-station.js
 
-# G9 selected segmented trace
+# G9 selected segmented trace (CI gate)
 test -s hpr/edge/ui/edge-g9-trace.js
 grep -Fq 'edge-g9-trace.js' hpr/edge/ui/hpr-config.js
 grep -Fq 'MAX_TRACE_MIN=90' hpr/edge/ui/edge-g9-trace.js
