@@ -103,12 +103,17 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
+          # Tag builds must not move `latest` or `edge`; only the dev branch does.
+          flavor: |
+            latest=false
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=edge-test,enable=${{ startsWith(github.ref, 'refs/heads/feat/edge-airwire-bin-') }}
             type=raw,value=edge-native,enable=${{ github.ref == 'refs/heads/feat/edge-atlas-v4.7-native-airwire-v2' }}
             type=raw,value=edge-ux,enable=${{ github.ref == 'refs/heads/feat/edge-e1-e7-ux' }}
-            type=ref,event=tag
+            # git tag edge-v4.7.5-edge.rc4 -> image tag 4.7.5-edge.rc4
+            type=match,pattern=^edge-v(.+)$,group=1
             type=ref,event=pr
             type=sha,prefix=edge-,format=long
           labels: |
