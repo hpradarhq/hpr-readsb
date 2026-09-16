@@ -18,6 +18,10 @@ grep -q 'geojson' hpr/edge/ui/edge-g9-trace.js
 # P5 platform
 test -s hpr/edge/ui/manifest.webmanifest
 test -s hpr/edge/ui/sw.js
+# Local real flags (offline-safe, no CDN)
+test -s hpr/edge/ui/flag-icons.css
+test -s hpr/edge/ui/assets/flags/4x3/vn.svg
+grep -q 'flag-icons.css' "$IDX"
 grep -q 'checkAlerts' "$IDX"
 grep -q 'perfHud' "$IDX"
 grep -q 'applyLang' "$IDX"

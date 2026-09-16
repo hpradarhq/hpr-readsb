@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.7.5-edge.rc6
-ARG FE_BUILD=260916.rc5
+ARG FE_VERSION=4.7.5-edge.rc7
+ARG FE_BUILD=260916.rc6
 
 FROM debian:bookworm-slim AS builder
 
@@ -34,7 +34,7 @@ COPY hpr/edge/admin.cgi /usr/local/lib/hpr-edge/www/cgi-bin/admin
 COPY hpr/edge/ui/ /usr/share/nginx/html/
 RUN sed -i \
       -e "s|<title>HPRadar Atlas Edge</title>|<title>HPRadar Atlas Edge · FE v${FE_VERSION}</title>|" \
-      -e "s|V4.7 LIVE / AIRWIRE|FE v${FE_VERSION} · ${FE_BUILD}|" \
+      -e "s|V4.7 LIVE / AIRWIRE|${FE_VERSION} · ${FE_BUILD}|" \
       -e 's|</head>|<script src="/hpr-config.js"></script>\n<script src="/edge-g20a-aircraft-lod.js"></script>\n</head>|' \
       /usr/share/nginx/html/index.html \
     && printf '{"fe":"%s","build":"%s","airwire":"binary-v1","pdca":"G21-RC"}\n' "$FE_VERSION" "$FE_BUILD" > /usr/share/nginx/html/version.json \
