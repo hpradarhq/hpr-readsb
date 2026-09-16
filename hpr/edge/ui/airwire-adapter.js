@@ -22,7 +22,7 @@ function decodePosition(d,o,now){
   a.latitude=d.getInt32(o+8,true)/600000;
   a.coordinates=[a.longitude,a.latitude];
   const trail=a.trail,last=trail[trail.length-1];
-  if(!last||last[0]!==a.longitude||last[1]!==a.latitude){trail.push([a.longitude,a.latitude,now]);if(trail.length>180)trail.shift()}
+  if(!last||last[0]!==a.longitude||last[1]!==a.latitude){trail.push([a.longitude,a.latitude,now,a.barometricAltitudeFt]);if(trail.length>180)trail.shift()}
   a.barometricAltitudeFt=d.getInt16(o+12,true)*25;
   a.groundSpeedKt=d.getUint16(o+16,true)/10;
   a.trackDeg=d.getUint16(o+14,true)/10;
