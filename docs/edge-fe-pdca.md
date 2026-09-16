@@ -1,7 +1,7 @@
 # Atlas Edge FE PDCA backlog
 
 Frozen baseline: `f1cadf921bebb2748fbc16a6e83c67fefa683630` (physical-good).
-Test branch/tag: `redteam/edge-freeze-20260915` / `edge-v4.7.5-edge.rc3`.
+Test branch/tag: `redteam/edge-freeze-20260915` / `edge-v4.7.5-edge.rc4`.
 
 ## Backlog
 G1-G20: completed automated gates.
@@ -34,7 +34,11 @@ Check
 Act
 - rc2 exposed a feeds-panel reload race (form reset while a save was in flight);
   the reload now refreshes only the feed rows.
-- Cut `4.7.5-edge.rc3`, push the branch and `edge-v4.7.5-edge.rc3` tag for the
+- rc3/rc4 physical review: icons collided to a single silhouette, the status halo
+  read as a green circle, controls slid with the detail card, traces/replay were
+  not visible. Fixed icon overlap, transparent halo, pinned controls, trace live
+  fallback and a faster replay default.
+- Cut `4.7.5-edge.rc4`, push the branch and `edge-v4.7.5-edge.rc4` tag for the
   arm64/armv7 image build. Physical acceptance remains the only promotion gate.
 
 PDCA: Plan -> Do smallest change -> Check automated gates -> Act only on PASS.

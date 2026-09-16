@@ -20,12 +20,14 @@ proto.addLayer=function(layer,beforeId){
       }
     };
     addLayer.call(this,dot,beforeId);
-    layer={...layer,minzoom:5.8,paint:{...layer.paint,'circle-opacity':0,'circle-stroke-width':['case',['==',['get','selected'],1],2,0]}};
+    // Selected emphasis is the silhouette only (G3); no status ring.
+    layer={...layer,minzoom:5.8,paint:{...layer.paint,'circle-opacity':0,'circle-stroke-opacity':0,'circle-stroke-width':0}};
   }
   if(layer.id==='aircraft-symbol'){
+    // Icons always render at operational zoom; only labels/dots declutter.
     layer={...layer,minzoom:5.4,layout:{...layer.layout,
       'icon-size':['interpolate',['linear'],['zoom'],5.4,.48,7,.62,9,.78,12,.96],
-      'icon-allow-overlap':false,'icon-ignore-placement':false,
+      'icon-allow-overlap':true,'icon-ignore-placement':true,
       'symbol-sort-key':['case',['==',['get','selected'],1],0,['match',['get','status'],'live',1,'aging',2,3]]
     }};
     const result=addLayer.call(this,layer,beforeId);

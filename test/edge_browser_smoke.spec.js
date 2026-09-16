@@ -123,10 +123,11 @@ test('Atlas Edge remains clickable and responsive', async () => {
     const map=globalThis.__hprTestMap;
     const halo=map.getLayer('aircraft-halo');
     const symbol=map.getLayer('aircraft-symbol');
-    return {haloRadius:halo.paint['circle-radius'],haloStroke:halo.paint['circle-stroke-color'],symbolSize:symbol.layout['icon-size'],
+    return {haloRadius:halo.paint['circle-radius'],haloStroke:halo.paint['circle-stroke-color'],haloStrokeOpacity:halo.paint['circle-stroke-opacity'],symbolSize:symbol.layout['icon-size'],
       lodDot:!!map.getLayer('aircraft-lod-dot'),selected:!!map.getLayer('aircraft-selected-symbol'),styleErrors:map.styleErrors};
   });
   expect(mapPolicy.haloRadius).toBe(8);
+  expect(mapPolicy.haloStrokeOpacity).toBe(0);
   expect(JSON.stringify(mapPolicy.haloStroke)).not.toContain('selected');
   // Single zoom-based interpolate with the selected/normal case at the stops.
   expect(mapPolicy.symbolSize[0]).toBe('interpolate');

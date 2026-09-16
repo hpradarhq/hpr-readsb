@@ -106,15 +106,16 @@ test('G21 real MapLibre accepts aircraft layers under sustained AirWire load', a
   await expect.poll(() => page.evaluate(() => !!(globalThis.HPREdgeMap && globalThis.HPREdgeMap.getLayer('aircraft-symbol'))), { timeout: 15000 }).toBe(true);
   const policy = await page.evaluate(() => {
     const m = globalThis.HPREdgeMap;
+    const spec = id => (m.getStyle().layers || []).find(l => l.id === id) || {};
+    const symbol = spec('aircraft-symbol'), halo = spec('aircraft-halo');
     return {
-      symbol: !!m.getLayer('aircraft-symbol'),
-      lod: !!m.getLayer('aircraft-lod-dot'),
-      selected: !!m.getLayer('aircraft-selected-symbol'),
-      label: !!m.getLayer('aircraft-label'),
-      hit: !!m.getLayer('aircraft-hit'),
+      symbol: !!m.getLayer('aircraft-symbol'), lod: !!m.getLayer('aircraft-lod-dot'), selected: !!m.getLayer('aircraft-selected-symbol'),
+      label: !!m.getLayer('aircraft-label'), hit: !!m.getLayer('aircraft-hit'),
+      iconOverlap: symbol.layout && symbol.layout['icon-allow-overlap'],
+      haloStrokeOpacity: halo.paint && halo.paint['circle-stroke-opacity'],
     };
   });
-  expect(policy).toEqual({ symbol: true, lod: true, selected: true, label: true, hit: true });
+  expect(policy).toEqual({ symbol: true, lod: true, selected: true, label: true, hit: true, iconOverlap: true, haloStrokeOpacity: 0 });
 
   // Sustained real AirWire update workload: feed moving frames and stay interactive.
   for (let i = 0; i < 40; i++) {
@@ -123,6 +124,17 @@ test('G21 real MapLibre accepts aircraft layers under sustained AirWire load', a
   }
   await expect.poll(() => page.evaluate(() => globalThis.HPRAirWire.stats().aircraft)).toBe(n);
   await expect.poll(() => page.evaluate(() => !!globalThis.HPREdgeMap.getLayer('aircraft-symbol'))).toBe(true);
+
+  // Selecting an aircraft must show a trace and must not move the map controls.
+  await page.locator('#airList .row').first().click();
+  await expect.poll(() => page.evaluate(() => !!globalThis.HPREdgeMap.getLayer('hpr-readsb-trace')), { timeout: 10000 }).toBe(true);
+  const controls = await page.evaluate(() => {
+    const r = document.querySelector('.maplibregl-ctrl-top-right').getBoundingClientRect();
+    return { right: Math.round(r.right), width: window.innerWidth, detailOpen: document.getElementById('detail').classList.contains('open') };
+  });
+  expect(controls.detailOpen).toBe(true);
+  expect(controls.right).toBeGreaterThanOrEqual(controls.width - 16);
+
   expect(crashed).toBe(false);
   expect(pageErrors).toEqual([]);
   await browser.close();

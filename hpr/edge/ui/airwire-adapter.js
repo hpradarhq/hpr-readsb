@@ -13,7 +13,7 @@ const u24=(d,o)=>d.getUint8(o)|(d.getUint8(o+1)<<8)|(d.getUint8(o+2)<<16);
 const idOf=n=>n.toString(16).padStart(6,'0');
 function aircraft(id){
   let a=cache.get(id);
-  if(!a){a={kind:'aircraft',id,sourceClass:13,source:'Unknown',callsign:null,latitude:null,longitude:null,coordinates:null,barometricAltitudeFt:null,geometricAltitudeFt:null,groundSpeedKt:null,trackDeg:null,barometricRateFpm:null,geometricRateFpm:null,squawk:null,categoryCode:null,emergency:null,rssiDbfs:null,registration:null,typeCode:null,dbFlags:0,messageCount:0,isGround:false,isAlert:false,isSpi:false,isNonIcao:false,hasPosition:false,isMlat:false,lastSeenMs:0,lastPositionMs:0};cache.set(id,a)}
+  if(!a){a={kind:'aircraft',id,sourceClass:13,source:'Unknown',callsign:null,latitude:null,longitude:null,coordinates:null,barometricAltitudeFt:null,geometricAltitudeFt:null,groundSpeedKt:null,trackDeg:null,barometricRateFpm:null,geometricRateFpm:null,squawk:null,categoryCode:null,emergency:null,rssiDbfs:null,registration:null,typeCode:null,dbFlags:0,messageCount:0,isGround:false,isAlert:false,isSpi:false,isNonIcao:false,hasPosition:false,isMlat:false,lastSeenMs:0,lastPositionMs:0,trail:[]};cache.set(id,a)}
   return a;
 }
 function decodePosition(d,o,now){
@@ -21,6 +21,8 @@ function decodePosition(d,o,now){
   a.longitude=d.getInt32(o+4,true)/600000;
   a.latitude=d.getInt32(o+8,true)/600000;
   a.coordinates=[a.longitude,a.latitude];
+  const trail=a.trail,last=trail[trail.length-1];
+  if(!last||last[0]!==a.longitude||last[1]!==a.latitude){trail.push([a.longitude,a.latitude,now]);if(trail.length>180)trail.shift()}
   a.barometricAltitudeFt=d.getInt16(o+12,true)*25;
   a.groundSpeedKt=d.getUint16(o+16,true)/10;
   a.trackDeg=d.getUint16(o+14,true)/10;
@@ -76,6 +78,6 @@ window.fetch=async function(input,init){
   if(path==='/api/air/v1')return{ok:connected||cache.size>0,status:connected||cache.size>0?200:503,json:async()=>envelope()};
   return nativeFetch(input,init);
 };
-window.HPRAirWire=Object.freeze({adaptEnvelope,stats:()=>({connected,aircraft:cache.size,frames:totalFrames})});
+window.HPRAirWire=Object.freeze({adaptEnvelope,stats:()=>({connected,aircraft:cache.size,frames:totalFrames}),trail:id=>{const a=cache.get(String(id).toLowerCase());return a&&a.trail?a.trail:[]}});
 connect();
 })();

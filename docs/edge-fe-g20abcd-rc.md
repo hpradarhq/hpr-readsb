@@ -1,11 +1,12 @@
 # G20A-D to G21 release candidate
 
-Candidate: FE `4.7.5-edge.rc3`, build `260916.rc2`, branch `redteam/edge-freeze-20260915`.
+Candidate: FE `4.7.5-edge.rc4`, build `260916.rc3`, branch `redteam/edge-freeze-20260915`.
 
 Supersedes `4.7.5-edge.rc1` (`121a0eb`), which failed physical acceptance: real Pi
 Edge FE froze while the mocked Chromium + synthetic 400-aircraft CI stayed green.
 `rc2` carried the freeze fix but its tag run tripped a pre-existing feeds-panel
-race; `rc3` adds the deterministic feeds reload below.
+race; `rc3` added the deterministic feeds reload; `rc4` fixes the map UX found on
+the physical build.
 
 ## Root cause (rc1)
 
@@ -39,10 +40,26 @@ race; `rc3` adds the deterministic feeds reload below.
 - `edge-g15-feeds.js`: reload refreshes only the feed rows, so an in-flight save
   no longer resets the preset/custom form state (was a CI-flaky UX race).
 
+## rc4 physical UX fixes
+
+- `edge-g20a-aircraft-lod.js`: aircraft icons now allow overlap so every
+  silhouette renders at operational zoom (collision previously left only one
+  icon visible); the status halo ring is fully transparent (the "green circle").
+- `edge-g18-responsive.js`: MapLibre controls no longer slide left when the
+  detail card opens; they stay pinned top-right.
+- `edge-g9-trace.js` + `airwire-adapter.js`: selecting an aircraft always shows
+  a trace. readsb `trace_recent`/`trace_full` remain the primary source, with a
+  browser-side live trail fallback from the AirWire position history; trace line
+  is thicker/brighter.
+- `edge-g10-replay.js`: default replay speed 20× (was 5×) and a larger, clearer
+  replay marker so playback is actually visible.
+
 ## Regression
 
 - `test/edge_g21_real_map.spec.js`: production script set + real MapLibre +
-  sustained binary AirWire load; fails if `aircraft-symbol` is rejected.
+  sustained binary AirWire load; fails if `aircraft-symbol` is rejected, asserts
+  icons allow overlap, the halo ring is transparent, selecting shows a trace,
+  and the controls stay pinned when the card opens.
 - `edge_browser_smoke.spec.js` / `edge_g20_browser_soak.spec.js`: stubs now
   enforce the one-zoom-subexpression rule and load `edge-g20a-aircraft-lod.js`.
 
