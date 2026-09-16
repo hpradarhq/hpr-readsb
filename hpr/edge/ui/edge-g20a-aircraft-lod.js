@@ -15,7 +15,7 @@ proto.addLayer=function(layer,beforeId){
         'symbol-sort-key':['case',['==',['get','selected'],1],0,['match',['get','status'],'live',1,'aging',2,3]]
       },
       paint:{
-        'text-color':['match',['get','status'],'live','#42dfa3','aging','#ffb84d','#70869c'],
+        'text-color':['coalesce',['get','altColor'],'#70869c'],
         'text-halo-color':'rgba(0,0,0,.32)','text-halo-width':1
       }
     };

@@ -21,6 +21,8 @@ function baseKey(a){const c=code(a);if(HEAVY.has(c))return'heavy_2e';if(TWIN.has
 function iconKey(a){const exact=exactRotorcraft(a);return exact?`rotor-${exact.code}`:baseKey(a)}
 function baseSvg(key='airliner',color='currentColor'){const item=BASE[key]||BASE.airliner;return `<svg viewBox="${item.viewBox}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="${item.path}" fill="${color}" stroke="#111827" stroke-width=".7" stroke-linejoin="round"/></svg>`}
 function markup(a){const exact=exactRotorcraft(a);return exact?`<img class="rotorcraft-art" src="${exact.url}" alt="${exact.label}">`:baseSvg(baseKey(a),'currentColor')}
-function mapImages(color){const images=Object.keys(BASE).map(key=>({name:`aircraft-${key}`,svg:baseSvg(key,color)}));Object.entries(EXACT).forEach(([key,item])=>images.push({name:`aircraft-rotor-${key}`,url:`assets/rotorcraft/${item.file}`}));return images}
-window.HPRAircraftRenderer=Object.freeze({baseKey,iconKey,markup,mapImages,isRotorcraft,rotorcraftReason,exactRotorcraft});
+const ALT_COLORS=['#3b82f6','#22c55e','#eab308','#f97316','#ef4444','#a855f7'];
+function altBand(ft){const a=Number(ft);if(!Number.isFinite(a))return 0;if(a<3000)return 0;if(a<8000)return 1;if(a<15000)return 2;if(a<25000)return 3;if(a<35000)return 4;return 5}
+function mapImages(){const images=[];Object.keys(BASE).forEach(key=>ALT_COLORS.forEach((color,band)=>images.push({name:`aircraft-${key}-${band}`,svg:baseSvg(key,color)})));Object.entries(EXACT).forEach(([key,item])=>images.push({name:`aircraft-rotor-${key}`,url:`assets/rotorcraft/${item.file}`}));return images}
+window.HPRAircraftRenderer=Object.freeze({baseKey,iconKey,markup,mapImages,isRotorcraft,rotorcraftReason,exactRotorcraft,altBand,ALT_COLORS});
 })();
