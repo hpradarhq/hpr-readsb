@@ -179,7 +179,6 @@ $('#airBtn').onclick=()=>{$('#collection').classList.toggle('open');$('#airBtn')
 $('#themeBtn').onclick=()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';persistPreferences();applyThemeStyle()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.activeElement!==$('#search'))closeDetail()});window.addEventListener('resize',syncAdaptiveChrome);
 restorePreferences();syncAltFilter();applyLang();syncAdaptiveChrome();initMap();liveRaf=requestAnimationFrame(liveFrame);loadContext();tick();setInterval(tick,1000);setInterval(loadContext,30000);
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('/sw.js').catch(()=>{});
 window.__hprFE={projectPosition,fc,trailFC,toast,state:()=>({mapReady,aircraft:aircraft.length,selected,envelope:!!lastEnvelope,follow,filterAlt:preferences.filterAlt,watch:preferences.watch.slice(),lang:preferences.lang,perfHud:preferences.perfHud})};
 })();
 </script>

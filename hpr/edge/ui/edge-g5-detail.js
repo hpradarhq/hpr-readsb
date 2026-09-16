@@ -21,7 +21,7 @@ function install(){
   const detail=document.getElementById('detailBody');if(!detail||detail.__hprG5)return;detail.__hprG5=true;
   const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');if(!d?.get||!d?.set)return;
   Object.defineProperty(detail,'innerHTML',{configurable:true,get(){return d.get.call(this)},set(v){return d.set.call(this,transform(v))}});
-  const style=document.createElement('style');style.textContent='.hpr-flag-head{background:var(--s2)!important;border:1px solid var(--border);overflow:hidden}.hpr-country-flag{width:30px;height:22px;display:inline-block;filter:none;transform:none}';document.head.appendChild(style);
+  const style=document.createElement('style');style.textContent='.hpr-flag-head{background:var(--s2)!important;border:1px solid var(--border);overflow:hidden}.hpr-country-flag{width:30px;height:22px;display:inline-block;background-size:contain;background-repeat:no-repeat;background-position:50%;filter:none;transform:none}';document.head.appendChild(style);
 }
 document.addEventListener('DOMContentLoaded',install,{once:true});
 window.HPREdgeCountry=Object.freeze({country,transform});
