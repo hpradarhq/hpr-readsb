@@ -7,13 +7,12 @@ const R=[
 [0xa00000,0xafffff,'United States','us'],[0xc00000,0xc3ffff,'Canada','ca'],[0xc80000,0xc87fff,'New Zealand','nz'],[0xe00000,0xe3ffff,'Argentina','ar'],[0xe40000,0xe7ffff,'Brazil','br'],[0xe80000,0xe80fff,'Chile','cl'],[0xe84000,0xe84fff,'Ecuador','ec'],[0xe88000,0xe88fff,'Paraguay','py'],[0xe8c000,0xe8cfff,'Peru','pe'],[0xe90000,0xe90fff,'Uruguay','uy']
 ];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function flag(code){return String(code||'').toUpperCase().replace(/[A-Z]/g,c=>String.fromCodePoint(127397+c.charCodeAt(0)))}
-function country(hex){const n=parseInt(String(hex||'').replace(/^~/,''),16);if(!Number.isFinite(n))return null;const x=R.find(r=>n>=r[0]&&n<=r[1]);return x?{name:x[2],code:x[3],flag:flag(x[3])}:null}
+function country(hex){const n=parseInt(String(hex||'').replace(/^~/,''),16);if(!Number.isFinite(n))return null;const x=R.find(r=>n>=r[0]&&n<=r[1]);return x?{name:x[2],code:x[3]}:null}
 function transform(html){
   if(typeof html!=='string'||!html.includes('class="detail-head"')||!html.includes('<span>ICAO</span>'))return html;
   const m=html.match(/<span>ICAO<\/span><span>([0-9A-Fa-f]{6})<\/span>/);if(!m)return html;
   const c=country(m[1]);
-  const head=`<span class="plane-big hpr-flag-head" title="${esc(c?.name||'Country unavailable')}"><span class="hpr-country-flag" aria-hidden="true">${c?.flag||'—'}</span></span>`;
+  const head=`<span class="plane-big hpr-flag-head" title="${esc(c?.name||'Country unavailable')}"><span class="hpr-country-flag fi fi-${esc(c?.code||'un')}" aria-hidden="true"></span></span>`;
   html=html.replace(/<span class="plane-big"[^>]*>[\s\S]*?<\/span>/,head);
   if(c)html=html.replace(/(<span class="detail-title"><b>[\s\S]*?<\/b><small>)([\s\S]*?)(<\/small><\/span>)/,(_,a,b,z)=>`${a}${b}${b.includes(c.name)?'':` · ${esc(c.name)}`}${z}`);
   return html;
@@ -22,8 +21,8 @@ function install(){
   const detail=document.getElementById('detailBody');if(!detail||detail.__hprG5)return;detail.__hprG5=true;
   const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');if(!d?.get||!d?.set)return;
   Object.defineProperty(detail,'innerHTML',{configurable:true,get(){return d.get.call(this)},set(v){return d.set.call(this,transform(v))}});
-  const style=document.createElement('style');style.textContent='.hpr-flag-head{background:var(--s2)!important;border:1px solid var(--border);overflow:hidden}.hpr-country-flag{font-size:30px;line-height:1;filter:none;transform:none}';document.head.appendChild(style);
+  const style=document.createElement('style');style.textContent='.hpr-flag-head{background:var(--s2)!important;border:1px solid var(--border);overflow:hidden}.hpr-country-flag{width:30px;height:22px;display:inline-block;filter:none;transform:none}';document.head.appendChild(style);
 }
 document.addEventListener('DOMContentLoaded',install,{once:true});
-window.HPREdgeCountry=Object.freeze({country,flag,transform});
+window.HPREdgeCountry=Object.freeze({country,transform});
 })();

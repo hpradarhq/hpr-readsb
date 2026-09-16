@@ -5,9 +5,9 @@ IDX=hpr/edge/ui/index.html
 grep -q 'projectPosition' "$IDX"
 grep -q 'hpr-live-trail' "$IDX"
 grep -q 'liveFrame' "$IDX"
-# P2 altitude ramp + trend
+# P2 altitude ramp + hpr-globe shapes
 grep -q 'ALT_COLORS' hpr/edge/ui/aircraft-renderer.js
-grep -q 'aircraft-trend' "$IDX"
+test -s hpr/edge/ui/acicon.js
 # P3 interaction
 grep -q 'distBearing' "$IDX"
 grep -q 'followBtn' "$IDX"

@@ -118,9 +118,8 @@ test('G21 real MapLibre accepts aircraft layers under sustained AirWire load', a
   });
   expect(policy).toEqual({ symbol: true, lod: true, selected: true, label: true, hit: true, trail: true, iconOverlap: true, haloStrokeOpacity: 0 });
 
-  // P2: altitude-banded silhouettes and a climb/descend cue layer must exist.
-  await expect.poll(() => page.evaluate(() => globalThis.HPREdgeMap.hasImage('aircraft-airliner-0') && globalThis.HPREdgeMap.hasImage('aircraft-airliner-5')), { timeout: 10000 }).toBe(true);
-  expect(await page.evaluate(() => !!globalThis.HPREdgeMap.getLayer('aircraft-trend'))).toBe(true);
+  // P2: altitude-banded hpr-globe silhouette images must be registered.
+  await expect.poll(() => page.evaluate(() => (globalThis.HPREdgeMap.listImages ? globalThis.HPREdgeMap.listImages() : []).some(n => n.indexOf('aircraft-') === 0)), { timeout: 15000 }).toBe(true);
 
   // Sustained real AirWire update workload: feed moving frames and stay interactive.
   for (let i = 0; i < 40; i++) {

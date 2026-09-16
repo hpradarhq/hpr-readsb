@@ -17,7 +17,10 @@ unless a phase proves one is required.
 ## Status
 
 - P1 smooth live map: implemented (dead reckoning, rAF `setData`, default trails).
-- P2 visual parity: implemented (altitude colour ramp, climb/descend chevron).
+- P2 visual parity: implemented (altitude colour ramp). Aircraft silhouettes now
+  come from the HPR Globe shape library (`acicon.js`, 81 shapes, type/category
+  resolver) instead of the local SVGs; country flags use lipis/flag-icons.
+  The temporary climb/descend chevron was removed.
 - P3 interaction/data: implemented (altitude filter, follow/lock, distance/bearing,
   altitude-trend sparkline).
 - P4 playback/history: implemented (coverage dashboard, GeoJSON trace export).
