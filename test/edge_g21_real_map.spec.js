@@ -100,22 +100,23 @@ test('G21 real MapLibre accepts aircraft layers under sustained AirWire load', a
 
   await page.goto(baseURL, { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.evaluate(() => globalThis.HPRAirWire && globalThis.HPRAirWire.stats().aircraft), { timeout: 30000 }).toBe(n);
-  await expect.poll(() => page.evaluate(() => !!(globalThis.HPREdgeMap && globalThis.HPREdgeMap.loaded && globalThis.HPREdgeMap.loaded())), { timeout: 30000 }).toBe(true);
 
   // Real MapLibre must accept every aircraft layer the production bundle builds.
-  await expect.poll(() => page.evaluate(() => !!(globalThis.HPREdgeMap && globalThis.HPREdgeMap.getLayer('aircraft-symbol'))), { timeout: 15000 }).toBe(true);
+  // (Live dead-reckoning setData keeps the source busy, so wait on the layer,
+  // not on map.loaded().)
+  await expect.poll(() => page.evaluate(() => !!(globalThis.HPREdgeMap && globalThis.HPREdgeMap.getLayer('aircraft-symbol'))), { timeout: 30000 }).toBe(true);
   const policy = await page.evaluate(() => {
     const m = globalThis.HPREdgeMap;
     const spec = id => (m.getStyle().layers || []).find(l => l.id === id) || {};
     const symbol = spec('aircraft-symbol'), halo = spec('aircraft-halo');
     return {
       symbol: !!m.getLayer('aircraft-symbol'), lod: !!m.getLayer('aircraft-lod-dot'), selected: !!m.getLayer('aircraft-selected-symbol'),
-      label: !!m.getLayer('aircraft-label'), hit: !!m.getLayer('aircraft-hit'),
+      label: !!m.getLayer('aircraft-label'), hit: !!m.getLayer('aircraft-hit'), trail: !!m.getLayer('hpr-live-trail'),
       iconOverlap: symbol.layout && symbol.layout['icon-allow-overlap'],
       haloStrokeOpacity: halo.paint && halo.paint['circle-stroke-opacity'],
     };
   });
-  expect(policy).toEqual({ symbol: true, lod: true, selected: true, label: true, hit: true, iconOverlap: true, haloStrokeOpacity: 0 });
+  expect(policy).toEqual({ symbol: true, lod: true, selected: true, label: true, hit: true, trail: true, iconOverlap: true, haloStrokeOpacity: 0 });
 
   // Sustained real AirWire update workload: feed moving frames and stay interactive.
   for (let i = 0; i < 40; i++) {
