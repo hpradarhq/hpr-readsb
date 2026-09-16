@@ -1,0 +1,11 @@
+{
+  "name": "HPRadar Atlas Edge",
+  "short_name": "HPR Edge",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#02070d",
+  "theme_color": "#02070d",
+  "icons": []
+}

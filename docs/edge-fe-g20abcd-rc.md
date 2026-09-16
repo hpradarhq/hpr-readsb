@@ -1,12 +1,13 @@
 # G20A-D to G21 release candidate
 
-Candidate: FE `4.7.5-edge.rc4`, build `260916.rc3`, branch `redteam/edge-freeze-20260915`.
+Candidate: FE `4.7.5-edge.rc5`, build `260916.rc4`, branch `redteam/edge-freeze-20260915`.
 
 Supersedes `4.7.5-edge.rc1` (`121a0eb`), which failed physical acceptance: real Pi
 Edge FE froze while the mocked Chromium + synthetic 400-aircraft CI stayed green.
 `rc2` carried the freeze fix but its tag run tripped a pre-existing feeds-panel
-race; `rc3` added the deterministic feeds reload; `rc4` fixes the map UX found on
-the physical build.
+race; `rc3` added the deterministic feeds reload; `rc4` fixed the map UX found on
+the physical build; `rc5` lands the FR24-parity phases P1-P5 (see
+`edge-fe-fr24-parity.md`).
 
 ## Root cause (rc1)
 

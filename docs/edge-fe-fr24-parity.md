@@ -14,6 +14,26 @@ unless a phase proves one is required.
   DOM on the map.
 - Physical Pi eyeball is the promotion gate; `edge` stays untouched until then.
 
+## Status
+
+- P1 smooth live map: implemented (dead reckoning, rAF `setData`, default trails).
+- P2 visual parity: implemented (altitude colour ramp, climb/descend chevron).
+- P3 interaction/data: implemented (altitude filter, follow/lock, distance/bearing,
+  altitude-trend sparkline).
+- P4 playback/history: implemented (coverage dashboard, GeoJSON trace export).
+- P5 platform: implemented (PWA manifest, watch list + emergency toast, perf HUD,
+  a11y basics, EN/VN toggle).
+- Still open for true FR24 parity: clustering at very low zoom, full-day globe
+  history replay (needs a backend globe-history dir), airline logos, terrain.
+
+## Physical defect log
+
+- MapLibre controls relocating when the detail card opens: reported on the rc4
+  build. The CSS shift was removed in rc4 and the container is pinned with
+  `!important`; rects verified unchanged at 1280/1000/800/600. Locked by the
+  g21 real-map regression (controls stay pinned while the card is open). If it
+  recurs, confirm the device actually pulled the new image (browser cache).
+
 ## Per-phase definition of done
 
 - p95 long task < 50 ms and frame p95 < 33 ms at 400 aircraft on 4x CPU throttle.
