@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG FE_VERSION=4.7.5-edge.rc9
-ARG FE_BUILD=260916.rc9
+ARG FE_VERSION=4.7.5-edge.rc10
+ARG FE_BUILD=260916.rc10
 
 FROM debian:bookworm-slim AS builder
 
