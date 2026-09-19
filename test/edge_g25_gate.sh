@@ -18,6 +18,7 @@ grep -q 'geojson' hpr/edge/ui/edge-g9-trace.js
 # readsb JSON API exposure (/api/readsb/ and /data/ mirrors, CORS)
 grep -q 'location /api/readsb/' hpr/edge/nginx.conf
 grep -q 'location /data/' hpr/edge/nginx.conf
+grep -Fq 'receiver|stats|station|aircraft|status|airwire' hpr/edge/nginx.conf
 grep -q '/api/readsb/stats.json' "$IDX"
 # P5 platform
 test -s hpr/edge/ui/manifest.webmanifest

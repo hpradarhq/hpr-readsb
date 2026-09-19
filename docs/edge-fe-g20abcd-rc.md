@@ -1,6 +1,6 @@
 # G20A-D to G21 release candidate
 
-Candidate: FE `4.7.5-edge.rc10`, build `260916.rc10`, branch `redteam/edge-freeze-20260915`.
+Candidate: FE `4.7.5-edge.rc11`, build `260916.rc11`, branch `redteam/edge-freeze-20260915`.
 
 Supersedes `4.7.5-edge.rc1` (`121a0eb`), which failed physical acceptance: real Pi
 Edge FE froze while the mocked Chromium + synthetic 400-aircraft CI stayed green.
