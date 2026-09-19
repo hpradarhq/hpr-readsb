@@ -7,6 +7,10 @@ PIN_FILE="$DATA_DIR/pin"
 RUN_DIR=/run/hpr-edge
 RELOAD_FILE="$RUN_DIR/reload"
 mkdir -p /run/readsb "$DATA_DIR" "$RUN_DIR"
+# readsb/nginx must be able to read the generated JSON; secrets are written in
+# subshells with their own umask so this never leaks into the server processes.
+umask 022
+chmod -R a+rX /run/readsb 2>/dev/null || true
 
 TZ_VALUE="${FEEDER_TZ:-${EEDER_TZ:-Asia/Ho_Chi_Minh}}"
 export TZ="$TZ_VALUE"
@@ -19,8 +23,7 @@ fi
 if [ ! -s "$CONFIG" ]; then
   LAT0="${FEEDER_LAT:-${RECEIVER_LAT:-}}"; LON0="${FEEDER_LONG:-${RECEIVER_LON:-}}"
   UUID0="${MULTIFEEDER_UUID:-${HPR_FEEDER_UUID:-}}"; ALT0="${FEEDER_ALT_M:-}"; UP0="${HPR_UPSTREAM_HOST:-}"; UPP0="${HPR_UPSTREAM_PORT:-30004}"
-  umask 077
-  jq -n --arg name "${FEEDER_NAME:-hpr-edge}" --arg lat "$LAT0" --arg lon "$LON0" --arg alt "$ALT0" --arg uuid "$UUID0" --arg up "$UP0" --arg upport "$UPP0" '{station:{name:$name,lat:(if $lat=="" then null else ($lat|tonumber) end),lon:(if $lon=="" then null else ($lon|tonumber) end),height_m:(if $alt=="" then null else ($alt|tonumber) end),uuid:$uuid},display:{units:"nautical",ring_enabled:true,ring_count:4,ring_step_nm:50,ring_color:"#59ddff",actual_range:true},feeders:(if $up=="" then [] else [{id:"legacy_hpr",name:"HPRadar",host:$up,port:($upport|tonumber),protocol:"beast_reduce_plus_out",enabled:true,uuid:$uuid}] end)}' > "$CONFIG"
+  ( umask 077; jq -n --arg name "${FEEDER_NAME:-hpr-edge}" --arg lat "$LAT0" --arg lon "$LON0" --arg alt "$ALT0" --arg uuid "$UUID0" --arg up "$UP0" --arg upport "$UPP0" '{station:{name:$name,lat:(if $lat=="" then null else ($lat|tonumber) end),lon:(if $lon=="" then null else ($lon|tonumber) end),height_m:(if $alt=="" then null else ($alt|tonumber) end),uuid:$uuid},display:{units:"nautical",ring_enabled:true,ring_count:4,ring_step_nm:50,ring_color:"#59ddff",actual_range:true},feeders:(if $up=="" then [] else [{id:"legacy_hpr",name:"HPRadar",host:$up,port:($upport|tonumber),protocol:"beast_reduce_plus_out",enabled:true,uuid:$uuid}] end)}' > "$CONFIG" )
   chmod 600 "$CONFIG"
 else
   # Forward-compatible migration for volumes created by earlier Edge gates.
@@ -31,7 +34,7 @@ fi
 
 if [ ! -s "$PIN_FILE" ]; then
   N="$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')"; PIN="$(printf '%06d' $((N % 1000000)))"
-  umask 077; printf '%s\n' "$PIN" > "$PIN_FILE"; chmod 600 "$PIN_FILE"
+  ( umask 077; printf '%s\n' "$PIN" > "$PIN_FILE" ); chmod 600 "$PIN_FILE"
   printf '%s\n' "HPR Edge first-run ADMIN PIN: $PIN"
 fi
 

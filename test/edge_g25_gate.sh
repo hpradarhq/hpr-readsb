@@ -20,6 +20,10 @@ grep -q 'location /api/readsb/' hpr/edge/nginx.conf
 grep -q 'location /data/' hpr/edge/nginx.conf
 grep -Fq 'receiver|stats|station|aircraft|status|airwire' hpr/edge/nginx.conf
 grep -q '/api/readsb/stats.json' "$IDX"
+# JSON files must be world-readable: the script umask stays 022 and secrets use
+# their own subshell umask (no leak into readsb -> nginx 403).
+grep -q '^umask 022' hpr/edge/entrypoint.sh
+! grep -q '^umask 077' hpr/edge/entrypoint.sh
 # P5 platform
 test -s hpr/edge/ui/manifest.webmanifest
 # Local real flags (offline-safe, inlined, no CDN)
